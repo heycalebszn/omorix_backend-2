@@ -1,0 +1,4614 @@
+openapi: 3.0.3
+info:
+  title: Omorix API
+  description: API for the Omorix e-commerce platform
+  version: 1.0.0
+  contact:
+    email: support@omorix.com
+servers:
+  - url: http://localhost:3000/api
+    description: Production Server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, customer]
+        status:
+          type: string
+          enum: [pending, verified, suspended, banned, deleted]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Address:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        companyName:
+          type: string
+          nullable: true
+        streetAddress:
+          type: string
+        city:
+          type: string
+        postCode:
+          type: string
+          nullable: true
+        country:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+          nullable: true
+        isDefault:
+          type: boolean
+          default: false
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AddressCreateSchema:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        companyName:
+          type: string
+          nullable: true
+        streetAddress:
+          type: string
+        city:
+          type: string
+        postCode:
+          type: string
+          nullable: true
+        country:
+          type: string
+        phone:
+          type: string
+        isDefault:
+          type: boolean
+          default: false
+      required:
+        - firstName
+        - lastName
+        - streetAddress
+        - city
+        - country
+        - phone
+    AddressUpdateSchema:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        companyName:
+          type: string
+          nullable: true
+        streetAddress:
+          type: string
+        city:
+          type: string
+        postCode:
+          type: string
+          nullable: true
+        country:
+          type: string
+        phone:
+          type: string
+        isDefault:
+          type: boolean
+      required:
+        - firstName
+        - lastName
+        - streetAddress
+        - city
+        - country
+        - phone
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        image:
+          type: string
+          format: uri
+          nullable: true
+          description: URL of the uploaded image after processing
+        isActive:
+          type: boolean
+        displayOrder:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CategoryCreateSchema:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        image:
+          type: string
+          format: binary
+          nullable: true
+          description: Image file to upload for the category
+        isActive:
+          type: boolean
+          default: true
+        displayOrder:
+          type: integer
+          nullable: true
+      required:
+        - name
+        - slug
+    CategoryUpdateSchema:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        image:
+          type: string
+          format: binary
+          nullable: true
+          description: New image file to upload for the category (optional)
+        isActive:
+          type: boolean
+        displayOrder:
+          type: integer
+          nullable: true
+      required:
+        - name
+        - slug
+    ProductVariant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        size:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        material:
+          type: string
+          nullable: true
+        price:
+          type: number
+          format: float
+        stockQuantity:
+          type: integer
+        sku:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ProductImage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        imageData:
+          type: string
+          format: base64
+        mimeType:
+          type: string
+        displayOrder:
+          type: integer
+        isDefault:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ProductImageUpdate:
+      type: object
+      properties:
+        displayOrder:
+          type: integer
+          minimum: 0
+        isDefault:
+          type: boolean
+      required:
+        - displayOrder
+        - isDefault
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        price:
+          type: number
+          format: float
+        discountPercentage:
+          type: integer
+          nullable: true
+        stockQuantity:
+          type: integer
+          description: Always 0, stock managed by ProductVariant
+        sku:
+          type: string
+        isActive:
+          type: boolean
+        featuredImage:
+          type: string
+          format: base64
+          nullable: true
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariant'
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductImage'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        variantId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+          format: float
+        subtotal:
+          type: number
+          format: float
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Nullable for guest orders
+        orderNumber:
+          type: string
+        status:
+          type: string
+          enum: [pending, shipped, delivered, canceled]
+        totalAmount:
+          type: number
+          format: float
+        subtotal:
+          type: number
+          format: float
+        tax:
+          type: number
+          format: float
+        shippingCost:
+          type: number
+          format: float
+        shippingFirstName:
+          type: string
+          nullable: true
+        shippingLastName:
+          type: string
+          nullable: true
+        shippingAddress:
+          type: string
+        shippingCity:
+          type: string
+          nullable: true
+        shippingState:
+          type: string
+          nullable: true
+        shippingZip:
+          type: string
+          nullable: true
+        shippingCountry:
+          type: string
+          nullable: true
+        shippingPhone:
+          type: string
+          nullable: true
+        shippingMethod:
+          type: string
+          enum: [standard, express, free_shipping]
+        paymentMethod:
+          type: string
+          enum: [paystack, credit_card, cash_on_delivery, paypal]
+        paymentStatus:
+          type: string
+          enum: [pending, completed, failed]
+          default: pending
+        email:
+          type: string
+          format: email
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Cart:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Nullable for guest carts
+        sessionId:
+          type: string
+          nullable: true
+          description: Used to identify guest carts
+        status:
+          type: string
+          enum: [active, converted]
+        expiryDate:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        cartId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        variantId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+          format: float
+        addedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        product:
+          $ref: '#/components/schemas/Product'
+    CartItemSchema:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: The ID of the product to add to the cart
+        variantId:
+          type: string
+          format: uuid
+          description: The ID of the product variant
+        quantity:
+          type: integer
+          minimum: 1
+          description: The quantity of the item
+      required:
+        - productId
+        - variantId
+        - quantity
+    CartUpdateSchema:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItemSchema'
+      required:
+        - items
+    CheckoutSchema:
+      type: object
+      properties:
+        shippingFirstName:
+          type: string
+          nullable: true
+        shippingLastName:
+          type: string
+          nullable: true
+        shippingAddress:
+          type: string
+          description: The shipping address
+        shippingCity:
+          type: string
+          nullable: true
+        shippingState:
+          type: string
+          nullable: true
+        shippingZip:
+          type: string
+          nullable: true
+        shippingCountry:
+          type: string
+          nullable: true
+        shippingPhone:
+          type: string
+          nullable: true
+        shippingMethod:
+          type: string
+          enum: [standard, express, free_shipping]
+        paymentMethod:
+          type: string
+          enum: [paystack, credit_card, cash_on_delivery, paypal]
+        email:
+          type: string
+          format: email
+          description: Required for guest checkout; optional for authenticated users
+      required:
+        - shippingAddress
+        - shippingMethod
+        - paymentMethod
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+        statusCode:
+          type: integer
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+        statusCode:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  path:
+                    type: array
+                    items:
+                      type: string
+        timestamp:
+          type: string
+          format: date-time
+    PayPalOrderCreateResponse:
+      type: object
+      properties:
+        paypalOrderId:
+          type: string
+          description: The PayPal order ID
+        approvalUrl:
+          type: string
+          format: uri
+          description: The URL to redirect the user to for PayPal payment approval
+    PayPalCaptureResponse:
+      type: object
+      properties:
+        orderId:
+          type: string
+          format: uuid
+          description: The store order ID
+        orderNumber:
+          type: string
+          description: The order number
+        status:
+          type: string
+          enum: [pending, processing, shipped, delivered, canceled]
+          description: The updated order status
+        paymentStatus:
+          type: string
+          enum: [pending, paid, failed, refunded]
+          description: The payment status
+        captureId:
+          type: string
+          description: The PayPal capture ID
+    PaymentStatusResponse:
+      type: object
+      properties:
+        orderId:
+          type: string
+          format: uuid
+          description: The store order ID
+        orderNumber:
+          type: string
+          description: The order number
+        status:
+          type: string
+          enum: [pending, processing, shipped, delivered, canceled]
+          description: The order status
+        paymentStatus:
+          type: string
+          enum: [pending, paid, failed, refunded]
+          description: The payment status
+        paypalDetails:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              description: The PayPal order ID
+            status:
+              type: string
+              description: The PayPal order status
+            payer:
+              type: object
+              properties:
+                email_address:
+                  type: string
+                  format: email
+                  description: The PayPal email address of the payer
+                payer_id:
+                  type: string
+                  description: The PayPal payer ID
+                name:
+                  type: object
+                  properties:
+                    given_name:
+                      type: string
+                    surname:
+                      type: string
+
+
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                phone:
+                  type: string
+                role:
+                  type: string
+                  enum: [admin, customer]
+              required:
+                - email
+                - password
+                - firstName
+                - lastName
+                - phone
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/login:
+    post:
+      summary: Login a user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/verify-otp:
+    post:
+      summary: Verify user OTP
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                otp:
+                  type: string
+              required:
+                - userId
+                - otp
+      responses:
+        '200':
+          description: OTP verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/forgot-password:
+    post:
+      summary: Request password reset
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+              required:
+                - email
+      responses:
+        '200':
+          description: Password reset OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/reset-password:
+    post:
+      summary: Reset user password
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                otp:
+                  type: string
+                password:
+                  type: string
+              required:
+                - userId
+                - otp
+                - password
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid OTP or user ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/change-password:
+    post:
+      summary: Change user password
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                oldPassword:
+                  type: string
+                newPassword:
+                  type: string
+              required:
+                - oldPassword
+                - newPassword
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid old password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /addresses:
+    post:
+      summary: Create a new address
+      description: Creates a new address for the authenticated user. If `isDefault` is true, any existing default address for the user will be unset.
+      tags:
+        - Addresses
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressCreateSchema'
+      responses:
+        '201':
+          description: Address created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - User must be authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: Get all addresses for the authenticated user
+      description: Retrieves all addresses associated with the authenticated user.
+      tags:
+        - Addresses
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Addresses retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized - User must be authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /addresses/{addressId}:
+    put:
+      summary: Update an address
+      description: Updates an existing address for the authenticated user. If `isDefault` is true, any existing default address for the user will be unset.
+      tags:
+        - Addresses
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressUpdateSchema'
+      responses:
+        '200':
+          description: Address updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - User must be authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Address not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete an address
+      description: Deletes an address for the authenticated user.
+      tags:
+        - Addresses
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Address deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized - User must be authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Address not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /addresses/{addressId}/default:
+    patch:
+      summary: Set an address as default
+      description: Sets the specified address as the default address for the authenticated user, unsetting any existing default address.
+      tags:
+        - Addresses
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Default address set successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized - User must be authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Address not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/categories:
+    post:
+      summary: Create a main category
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategoryCreateSchema'
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/categories/{categoryId}/sub:
+    post:
+      summary: Create a subcategory
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategoryCreateSchema'
+      responses:
+        '201':
+          description: Subcategory created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/categories/{subCategoryId}/sub:
+    post:
+      summary: Create a sub-subcategory
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: subCategoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategoryCreateSchema'
+      responses:
+        '201':
+          description: Sub-subcategory created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /categories:
+    get:
+      summary: Get all categories
+      tags:
+        - Public
+        - Categories
+      responses:
+        '200':
+          description: Categories retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /categories/{id}:
+    get:
+      summary: Get category details
+      tags:
+        - Public
+        - Categories
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Category details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Category not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/categories/{id}:
+    patch:
+      summary: Update a category
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategoryUpdateSchema'
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Category not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete a category
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Category deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Category not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/products:
+    post:
+      summary: Create a product
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                  format: float
+                discountPercentage:
+                  type: integer
+                stockQuantity:
+                  type: integer
+                  description: Always 0, stock managed by ProductVariant
+                sku:
+                  type: string
+                slug:
+                  type: string
+                  description: unique slug for SEO
+                isActive:
+                  type: string
+                  enum:
+                    - active
+                    - inactive
+                    - archived
+                    - restored
+                    - draft
+                  default: active
+                categoryIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                variants:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      size:
+                        type: string
+                        nullable: true
+                      color:
+                        type: string
+                        nullable: true
+                      material:
+                        type: string
+                        nullable: true
+                      price:
+                        type: number
+                        format: float
+                      stockQuantity:
+                        type: integer
+                      sku:
+                        type: string
+                    required:
+                      - stockQuantity
+              required:
+                - name
+                - price
+                - sku
+                - categoryIds
+                - variants
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/products/{id}:
+    patch:
+      summary: Update a product
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                  format: float
+                discountPercentage:
+                  type: integer
+                stockQuantity:
+                  type: integer
+                sku:
+                  type: string
+                isActive:
+                  type: string
+                  enum:
+                    - active
+                    - inactive
+                    - archived
+                    - restored
+                    - draft
+                  default: active
+                categoryIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                variants:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      size:
+                        type: string
+                        nullable: true
+                      color:
+                        type: string
+                        nullable: true
+                      material:
+                        type: string
+                        nullable: true
+                      price:
+                        type: number
+                        format: float
+                      stockQuantity:
+                        type: integer
+                      sku:
+                        type: string
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete a product
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Product deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/products/{id}/stock:
+    patch:
+      summary: Update product variant stock
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: variantId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                stockQuantity:
+                  type: integer
+              required:
+                - stockQuantity
+      responses:
+        '200':
+          description: Stock updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Product or variant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/products/{id}/archive:
+    patch:
+      summary: Archive a product
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Product archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/products/{id}/restore:
+    patch:
+      summary: Restore a product
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Product restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/products/{productId}/images:
+    post:
+      summary: Add images to a product
+      tags:
+        - Admin
+        - Products
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+              required:
+                - images
+      responses:
+        '201':
+          description: Images added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/products/images/{imageId}:
+    delete:
+      summary: Delete a product image
+      tags:
+        - Admin
+        - Products
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: imageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Image deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Update product image order and default status
+      tags:
+        - Admin
+        - Products
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: imageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductImageUpdate'
+      responses:
+        '200':
+          description: Image updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /products:
+    get:
+      summary: Get all products
+      tags:
+        - Public
+        - Products
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+            format: float
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+            format: float
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [createdAt_desc, price_asc, price_desc]
+            default: createdAt_desc
+      responses:
+        '200':
+          description: Products retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Products not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /products/{id}:
+    get:
+      summary: Get product details
+      tags:
+        - Public
+        - Products
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /products/category/{id}:
+    get:
+      summary: Get products by category
+      tags:
+        - Public
+        - Products
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [createdAt_desc, price_asc, price_desc]
+            default: createdAt_desc
+      responses:
+        '200':
+          description: Products by category
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Products or category not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /products/images/{imageId}:
+    get:
+      summary: Get product image
+      tags:
+        - Public
+        - Products
+      parameters:
+        - name: imageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Image retrieved successfully
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Image not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders:
+    get:
+      summary: Get all orders for the authenticated customer
+      description: Retrieves a paginated list of orders placed by the authenticated customer.
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, shipped, delivered, canceled]
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: createdAt
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [ASC, DESC]
+            default: DESC
+      responses:
+        '200':
+          description: Orders retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized - User must be authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No orders found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/cart:
+    get:
+      summary: Get cart details
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cart retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Cart not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Add item to cart
+      description: Adds an item to the cart. Accessible to both authenticated users and guest users (using session ID).
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItemSchema'
+      responses:
+        '200':
+          description: Item added to cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Update cart
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartUpdateSchema'
+      responses:
+        '200':
+          description: Cart updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Remove item from cart
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItemSchema'
+      responses:
+        '200':
+          description: Item removed from cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/cart/checkout:
+    post:
+      summary: Checkout cart
+      description: Processes the cart to create an order. Accessible to both authenticated users and guest users (using session ID). Guest users must provide an email.
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutSchema'
+      responses:
+        '201':
+          description: Checkout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error (e.g., missing email for guest checkout, empty cart)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/{orderId}:
+    get:
+      summary: Get order details
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/status/{orderId}:
+    get:
+      summary: Get order status
+      tags:
+        - Orders
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/cancel/{orderId}:
+    post:
+      summary: Cancel an order
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cancelReason:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: Order canceled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Order already shipped or delivered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/dashboard:
+    get:
+      summary: Get admin dashboard statistics
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard statistics retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/orders:
+    get:
+      summary: Get all orders
+      tags:
+        - Admin
+        - Orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, shipped, delivered, canceled]
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: createdAt
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [ASC, DESC]
+            default: DESC
+      responses:
+        '200':
+          description: Orders retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/orders/{id}:
+    patch:
+      summary: Update order status
+      tags:
+        - Admin
+        - Orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pending, shipped, delivered, canceled]
+              required:
+                - status
+      responses:
+        '200':
+          description: Order status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Cancel an order
+      tags:
+        - Admin
+        - Orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Order canceled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/customers:
+    get:
+      summary: Get all customers
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: createdAt
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [ASC, DESC]
+            default: DESC
+      responses:
+        '200':
+          description: Customers retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/customers/{id}:
+    get:
+      summary: Get customer details
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Customer details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete a customer
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Customer deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/customers/{id}/ban:
+    patch:
+      summary: Ban a customer
+      tags:
+        - Admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [banned, active]
+              required:
+                - status
+      responses:
+        '200':
+          description: Customer banned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /payments/paypal/create/{orderId}:
+    post:
+      summary: Create a PayPal order for an existing order
+      description: Creates a PayPal order for payment processing and returns the approval URL to redirect the user to PayPal.
+      tags:
+        - Payments
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: PayPal order created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PayPalOrderCreateResponse'
+        '400':
+          description: Validation error or invalid order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /payments/paypal/capture/{paypalOrderId}:
+    post:
+      summary: Capture a PayPal payment
+      description: Captures a previously approved PayPal payment and updates the order status.
+      tags:
+        - Payments
+      parameters:
+        - name: paypalOrderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment captured successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PayPalCaptureResponse'
+        '400':
+          description: Invalid PayPal order ID or capture failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /payments/paypal/webhook:
+    post:
+      summary: Handle PayPal webhook events
+      description: Endpoint for PayPal to send webhook notifications about payment events.
+      tags:
+        - Payments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event_type:
+                  type: string
+                  description: The type of PayPal event
+                resource:
+                  type: object
+                  description: The PayPal resource data
+      responses:
+        '200':
+          description: Webhook processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: Invalid webhook payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /payments/status/{orderId}:
+    get:
+    summary: Get payment status for an order
+    description: Retrieves the current payment status of an order.
+    tags:
+      - Payments
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Payment status retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/PaymentStatusResponse'
+      '404':
+        description: Order not found
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+# openapi: 3.0.3
+# info:
+#   title: Omorix API
+#   description: API for the Omorix e-commerce platform
+#   version: 1.0.0
+#   contact:
+#     email: support@omorix.com
+# servers:
+#   - url: https://glamorix-api.onrender.com/api
+#     description: Production Server
+# components:
+#   securitySchemes:
+#     bearerAuth:
+#       type: http
+#       scheme: bearer
+#       bearerFormat: JWT
+#   schemas:
+#     User:
+#       type: object
+#       properties:
+#         id:
+#           type: string
+#           format: uuid
+#         email:
+#           type: string
+#           format: email
+#         role:
+#           type: string
+#           enum: [admin, customer]
+#         status:
+#           type: string
+#           enum: [pending, verified, suspended, banned, deleted]
+#         createdAt:
+#           type: string
+#           format: date-time
+#         updatedAt:
+#           type: string
+#           format: date-time
+#     Customer:
+#       type: object
+#       properties:
+#         id:
+#           type: string
+#           format: uuid
+#         userId:
+#           type: string
+#           format: uuid
+#         firstName:
+#           type: string
+#         lastName:
+#           type: string
+#         phone:
+#           type: string
+#         address:
+#           type: string
+#         createdAt:
+#           type: string
+#           format: date-time
+#         updatedAt:
+#           type: string
+#           format: date-time
+#     Category:
+#       type: object
+#       properties:
+#         id:
+#           type: string
+#           format: uuid
+#         name:
+#           type: string
+#         slug:
+#           type: string
+#         description:
+#           type: string
+#           nullable: true
+#         parentId:
+#           type: string
+#           format: uuid
+#           nullable: true
+#         image:
+#           type: string
+#           format: uri
+#           nullable: true
+#         isActive:
+#           type: boolean
+#         displayOrder:
+#           type: integer
+#           nullable: true
+#         createdAt:
+#           type: string
+#           format: date-time
+#         updatedAt:
+#           type: string
+#           format: date-time
+#     ProductVariant:
+#       type: object
+#       properties:
+#         id:
+#           type: string
+#           format: uuid
+#         productId:
+#           type: string
+#           format: uuid
+#         size:
+#           type: string
+#           nullable: true
+#         color:
+#           type: string
+#           nullable: true
+#         material:
+#           type: string
+#           nullable: true
+#         price:
+#           type: number
+#           format: float
+#         stockQuantity:
+#           type: integer
+#         sku:
+#           type: string
+#         createdAt:
+#           type: string
+#           format: date-time
+#         updatedAt:
+#           type: string
+#           format: date-time
+#     ProductImage:
+#       type: object
+#       properties:
+#         id:
+#           type: string
+#           format: uuid
+#         productId:
+#           type: string
+#           format: uuid
+#         imageData:
+#           type: string
+#           format: base64
+#         mimeType:
+#           type: string
+#         displayOrder:
+#           type: integer
+#         isDefault:
+#           type: boolean
+#         createdAt:
+#           type: string
+#           format: date-time
+#         updatedAt:
+#           type: string
+#           format: date-time
+#     ProductImageUpdate:
+#       type: object
+#       properties:
+#         displayOrder:
+#           type: integer
+#           minimum: 0
+#         isDefault:
+#           type: boolean
+#       required:
+#         - displayOrder
+#         - isDefault
+#     Product:
+#       type: object
+#       properties:
+#         id:
+#           type: string
+#           format: uuid
+#         name:
+#           type: string
+#         slug:
+#           type: string
+#         description:
+#           type: string
+#           nullable: true
+#         price:
+#           type: number
+#           format: float
+#         discountPercentage:
+#           type: integer
+#           nullable: true
+#         stockQuantity:
+#           type: integer
+#           description: Always 0, stock managed by ProductVariant
+#         sku:
+#           type: string
+#         isActive:
+#           type: boolean
+#         featuredImage:
+#           type: string
+#           format: base64
+#           nullable: true
+#         categories:
+#           type: array
+#           items:
+#             $ref: '#/components/schemas/Category'
+#         variants:
+#           type: array
+#           items:
+#             $ref: '#/components/schemas/ProductVariant'
+#         images:
+#           type: array
+#           items:
+#             $ref: '#/components/schemas/ProductImage'
+#         createdAt:
+#           type: string
+#           format: date-time
+#         updatedAt:
+#           type: string
+#           format: date-time
+#         deletedAt:
+#           type: string
+#           format: date-time
+#           nullable: true
+#     OrderItem:
+#       type: object
+#       properties:
+#         id:
+#           type: string
+#           format: uuid
+#         orderId:
+#           type: string
+#           format: uuid
+#         productId:
+#           type: string
+#           format: uuid
+#         variantId:
+#           type: string
+#           format: uuid
+#         quantity:
+#           type: integer
+#         unitPrice:
+#           type: number
+#           format: float
+#         subtotal:
+#           type: number
+#           format: float
+#         createdAt:
+#           type: string
+#           format: date-time
+#         updatedAt:
+#           type: string
+#           format: date-time
+#     Order:
+#       type: object
+#       properties:
+#         id:
+#           type: string
+#           format: uuid
+#         userId:
+#           type: string
+#           format: uuid
+#         orderNumber:
+#           type: string
+#         status:
+#           type: string
+#           enum: [pending, shipped, delivered, canceled]
+#         totalAmount:
+#           type: number
+#           format: float
+#         subtotal:
+#           type: number
+#           format: float
+#         tax:
+#           type: number
+#           format: float
+#         shippingCost:
+#           type: number
+#           format: float
+#         shippingFirstName:
+#           type: string
+#           nullable: true
+#         shippingLastName:
+#           type: string
+#           nullable: true
+#         shippingAddress:
+#           type: string
+#         shippingCity:
+#           type: string
+#           nullable: true
+#         shippingState:
+#           type: string
+#           nullable: true
+#         shippingZip:
+#           type: string
+#           nullable: true
+#         shippingCountry:
+#           type: string
+#           nullable: true
+#         shippingPhone:
+#           type: string
+#           nullable: true
+#         shippingMethod:
+#           type: string
+#           enum: [standard, express, free_shipping]
+#         paymentMethod:
+#           type: string
+#           enum: [paystack, credit_card, cash_on_delivery, paypal]
+#         email:
+#           type: string
+#           format: email
+#         items:
+#           type: array
+#           items:
+#             $ref: '#/components/schemas/OrderItem'
+#         createdAt:
+#           type: string
+#           format: date-time
+#         updatedAt:
+#           type: string
+#           format: date-time
+#     Cart:
+#       type: object
+#       properties:
+#         id:
+#           type: string
+#           format: uuid
+#         userId:
+#           type: string
+#           format: uuid
+#         status:
+#           type: string
+#           enum: [active, converted]
+#         createdAt:
+#           type: string
+#           format: date-time
+#         updatedAt:
+#           type: string
+#           format: date-time
+#     CartItem:
+#       type: object
+#       properties:
+#         id:
+#           type: string
+#           format: uuid
+#         cartId:
+#           type: string
+#           format: uuid
+#         productId:
+#           type: string
+#           format: uuid
+#         variantId:
+#           type: string
+#           format: uuid
+#         quantity:
+#           type: integer
+#         unitPrice:
+#           type: number
+#           format: float
+#         addedAt:
+#           type: string
+#           format: date-time
+#         createdAt:
+#           type: string
+#           format: date-time
+#         updatedAt:
+#           type: string
+#           format: date-time
+#         product:
+#           $ref: '#/components/schemas/Product'
+#     CartItemSchema:
+#       type: object
+#       properties:
+#         productId:
+#           type: string
+#           format: uuid
+#           description: The ID of the product to add to the cart
+#         variantId:
+#           type: string
+#           format: uuid
+#           description: The ID of the product variant
+#         quantity:
+#           type: integer
+#           minimum: 1
+#           description: The quantity of the item
+#       required:
+#         - productId
+#         - variantId
+#         - quantity
+#     CartUpdateSchema:
+#       type: object
+#       properties:
+#         items:
+#           type: array
+#           items:
+#             $ref: '#/components/schemas/CartItemSchema'
+#       required:
+#         - items
+#     CheckoutSchema:
+#       type: object
+#       properties:
+#         shippingFirstName:
+#           type: string
+#           nullable: true
+#         shippingLastName:
+#           type: string
+#           nullable: true
+#         shippingAddress:
+#           type: string
+#           description: The shipping address
+#         shippingCity:
+#           type: string
+#           nullable: true
+#         shippingState:
+#           type: string
+#           nullable: true
+#         shippingZip:
+#           type: string
+#           nullable: true
+#         shippingCountry:
+#           type: string
+#           nullable: true
+#         shippingPhone:
+#           type: string
+#           nullable: true
+#         shippingMethod:
+#           type: string
+#           enum: [standard, express, free_shipping]
+#         paymentMethod:
+#           type: string
+#           enum: [paystack, credit_card, cash_on_delivery, paypal]
+#         email:
+#           type: string
+#           format: email
+#       required:
+#         - shippingAddress
+#         - shippingMethod
+#         - paymentMethod
+#         - email
+#     ApiResponse:
+#       type: object
+#       properties:
+#         success:
+#           type: boolean
+#         message:
+#           type: string
+#         data:
+#           type: object
+#         statusCode:
+#           type: integer
+#     Error:
+#       type: object
+#       properties:
+#         success:
+#           type: boolean
+#         statusCode:
+#           type: integer
+#         message:
+#           type: string
+#         data:
+#           type: object
+#           properties:
+#             errors:
+#               type: array
+#               items:
+#                 type: object
+#                 properties:
+#                   message:
+#                     type: string
+#                   path:
+#                     type: array
+#                     items:
+#                       type: string
+#         timestamp:
+#           type: string
+#           format: date-time
+# paths:
+#   /auth/register:
+#     post:
+#       summary: Register a new user
+#       tags:
+#         - Authentication
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               properties:
+#                 email:
+#                   type: string
+#                   format: email
+#                 password:
+#                   type: string
+#                 firstName:
+#                   type: string
+#                 lastName:
+#                   type: string
+#                 phone:
+#                   type: string
+#                 role:
+#                   type: string
+#                   enum: [admin, customer]
+#               required:
+#                 - email
+#                 - password
+#                 - firstName
+#                 - lastName
+#                 - phone
+#       responses:
+#         '201':
+#           description: User registered successfully
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Validation error
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /auth/login:
+#     post:
+#       summary: Login a user
+#       tags:
+#         - Authentication
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               properties:
+#                 email:
+#                   type: string
+#                   format: email
+#                 password:
+#                   type: string
+#               required:
+#                 - email
+#                 - password
+#       responses:
+#         '200':
+#           description: Login successful
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '401':
+#           description: Invalid credentials
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /auth/verify-otp:
+#     post:
+#       summary: Verify user OTP
+#       tags:
+#         - Authentication
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               properties:
+#                 userId:
+#                   type: string
+#                   format: uuid
+#                 otp:
+#                   type: string
+#               required:
+#                 - userId
+#                 - otp
+#       responses:
+#         '200':
+#           description: OTP verified
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Invalid OTP
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /auth/forgot-password:
+#     post:
+#       summary: Request password reset
+#       tags:
+#         - Authentication
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               properties:
+#                 email:
+#                   type: string
+#                   format: email
+#               required:
+#                 - email
+#       responses:
+#         '200':
+#           description: Password reset OTP sent
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Invalid email
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /auth/reset-password:
+#     post:
+#       summary: Reset user password
+#       tags:
+#         - Authentication
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               properties:
+#                 userId:
+#                   type: string
+#                   format: uuid
+#                 otp:
+#                   type: string
+#                 password:
+#                   type: string
+#               required:
+#                 - userId
+#                 - otp
+#                 - password
+#       responses:
+#         '200':
+#           description: Password reset successful
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Invalid OTP or user ID
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /auth/change-password:
+#     post:
+#       summary: Change user password
+#       tags:
+#         - Authentication
+#       security:
+#         - bearerAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               properties:
+#                 oldPassword:
+#                   type: string
+#                 newPassword:
+#                   type: string
+#               required:
+#                 - oldPassword
+#                 - newPassword
+#       responses:
+#         '200':
+#           description: Password changed successfully
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Invalid old password
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/categories:
+#     post:
+#       summary: Create a main category
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/Category'
+#       responses:
+#         '201':
+#           description: Category created
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/categories/{categoryId}/sub:
+#     post:
+#       summary: Create a subcategory
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: categoryId
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/Category'
+#       responses:
+#         '201':
+#           description: Subcategory created
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/categories/{subCategoryId}/sub:
+#     post:
+#       summary: Create a sub-subcategory
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: subCategoryId
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/Category'
+#       responses:
+#         '201':
+#           description: Sub-subcategory created
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /categories:
+#     get:
+#       summary: Get all categories
+#       tags:
+#         - Public
+#         - Categories
+#       responses:
+#         '200':
+#           description: Categories retrieved
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#   /categories/{id}:
+#     get:
+#       summary: Get category details
+#       tags:
+#         - Public
+#         - Categories
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       responses:
+#         '200':
+#           description: Category details
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '404':
+#           description: Category not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/categories/{id}:
+#     patch:
+#       summary: Update a category
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/Category'
+#       responses:
+#         '200':
+#           description: Category updated
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Category not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#     delete:
+#       summary: Delete a category
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       responses:
+#         '204':
+#           description: Category deleted
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Category not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/products:
+#     post:
+#       summary: Create a product
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           multipart/form-data:
+#             schema:
+#               type: object
+#               properties:
+#                 name:
+#                   type: string
+#                 description:
+#                   type: string
+#                 price:
+#                   type: number
+#                   format: float
+#                 discountPercentage:
+#                   type: integer
+#                 stockQuantity:
+#                   type: integer
+#                   description: Always 0, stock managed by ProductVariant
+#                 sku:
+#                   type: string
+#                 slug:
+#                   type: string
+#                   description: unique slug for SEO
+#                 isActive:
+#                   type: string
+#                   enum:
+#                     - active
+#                     - inactive
+#                     - archived
+#                     - restored
+#                     - draft
+#                   default: active
+#                 categoryIds:
+#                   type: array
+#                   items:
+#                     type: string
+#                     format: uuid
+#                 images:
+#                   type: array
+#                   items:
+#                     type: string
+#                     format: binary
+#                 variants:
+#                   type: array
+#                   items:
+#                     type: object
+#                     properties:
+#                       size:
+#                         type: string
+#                         nullable: true
+#                       color:
+#                         type: string
+#                         nullable: true
+#                       material:
+#                         type: string
+#                         nullable: true
+#                       price:
+#                         type: number
+#                         format: float
+#                       stockQuantity:
+#                         type: integer
+#                       sku:
+#                         type: string
+#                     required:
+#                       - stockQuantity
+#               required:
+#                 - name
+#                 - price
+#                 - sku
+#                 - categoryIds
+#                 - variants
+#       responses:
+#         '201':
+#           description: Product created
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Validation error
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/products/{id}:
+#     patch:
+#       summary: Update a product
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       requestBody:
+#         required: true
+#         content:
+#           multipart/form-data:
+#             schema:
+#               type: object
+#               properties:
+#                 name:
+#                   type: string
+#                 slug:
+#                   type: string
+#                 description:
+#                   type: string
+#                 price:
+#                   type: number
+#                   format: float
+#                 discountPercentage:
+#                   type: integer
+#                 stockQuantity:
+#                   type: integer
+#                 sku:
+#                   type: string
+#                 isActive:
+#                   type: string
+#                   enum:
+#                     - active
+#                     - inactive
+#                     - archived
+#                     - restored
+#                     - draft
+#                   default: active
+#                 categoryIds:
+#                   type: array
+#                   items:
+#                     type: string
+#                     format: uuid
+#                 images:
+#                   type: array
+#                   items:
+#                     type: string
+#                     format: binary
+#                 variants:
+#                   type: array
+#                   items:
+#                     type: object
+#                     properties:
+#                       id:
+#                         type: string
+#                         format: uuid
+#                       size:
+#                         type: string
+#                         nullable: true
+#                       color:
+#                         type: string
+#                         nullable: true
+#                       material:
+#                         type: string
+#                         nullable: true
+#                       price:
+#                         type: number
+#                         format: float
+#                       stockQuantity:
+#                         type: integer
+#                       sku:
+#                         type: string
+#       responses:
+#         '200':
+#           description: Product updated
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Validation error
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Product not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#     delete:
+#       summary: Delete a product
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       responses:
+#         '204':
+#           description: Product deleted
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Product not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/products/{id}/stock:
+#     patch:
+#       summary: Update product variant stock
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#         - name: variantId
+#           in: query
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               properties:
+#                 stockQuantity:
+#                   type: integer
+#               required:
+#                 - stockQuantity
+#       responses:
+#         '200':
+#           description: Stock updated
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Validation error
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Product or variant not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/products/{id}/archive:
+#     patch:
+#       summary: Archive a product
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       responses:
+#         '200':
+#           description: Product archived
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Product not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/products/{id}/restore:
+#     patch:
+#       summary: Restore a product
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       responses:
+#         '200':
+#           description: Product restored
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Product not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/products/{productId}/images:
+#     post:
+#       summary: Add images to a product
+#       tags:
+#         - Admin
+#         - Products
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: productId
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       requestBody:
+#         required: true
+#         content:
+#           multipart/form-data:
+#             schema:
+#               type: object
+#               properties:
+#                 images:
+#                   type: array
+#                   items:
+#                     type: string
+#                     format: binary
+#               required:
+#                 - images
+#       responses:
+#         '201':
+#           description: Images added successfully
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Validation error
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Product not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/products/images/{imageId}:
+#     delete:
+#       summary: Delete a product image
+#       tags:
+#         - Admin
+#         - Products
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: imageId
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       responses:
+#         '204':
+#           description: Image deleted successfully
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Image not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#     patch:
+#       summary: Update product image order and default status
+#       tags:
+#         - Admin
+#         - Products
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: imageId
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/ProductImageUpdate'
+#       responses:
+#         '200':
+#           description: Image updated successfully
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Validation error
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Image not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /products:
+#     get:
+#       summary: Get all products
+#       tags:
+#         - Public
+#         - Products
+#       parameters:
+#         - name: limit
+#           in: query
+#           schema:
+#             type: integer
+#             default: 10
+#         - name: offset
+#           in: query
+#           schema:
+#             type: integer
+#             default: 0
+#         - name: categoryId
+#           in: query
+#           schema:
+#             type: string
+#             format: uuid
+#         - name: isActive
+#           in: query
+#           schema:
+#             type: boolean
+#             default: true
+#         - name: minPrice
+#           in: query
+#           schema:
+#             type: number
+#             format: float
+#         - name: maxPrice
+#           in: query
+#           schema:
+#             type: number
+#             format: float
+#         - name: sort
+#           in: query
+#           schema:
+#             type: string
+#             enum: [createdAt_desc, price_asc, price_desc]
+#             default: createdAt_desc
+#       responses:
+#         '200':
+#           description: Products retrieved
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '404':
+#           description: Products not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /products/{id}:
+#     get:
+#       summary: Get product details
+#       tags:
+#         - Public
+#         - Products
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       responses:
+#         '200':
+#           description: Product details
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '404':
+#           description: Product not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /products/category/{id}:
+#     get:
+#       summary: Get products by category
+#       tags:
+#         - Public
+#         - Products
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#         - name: limit
+#           in: query
+#           schema:
+#             type: integer
+#             default: 10
+#         - name: offset
+#           in: query
+#           schema:
+#             type: integer
+#             default: 0
+#         - name: isActive
+#           in: query
+#           schema:
+#             type: boolean
+#             default: true
+#         - name: sort
+#           in: query
+#           schema:
+#             type: string
+#             enum: [createdAt_desc, price_asc, price_desc]
+#             default: createdAt_desc
+#       responses:
+#         '200':
+#           description: Products by category
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '404':
+#           description: Products or category not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /products/images/{imageId}:
+#     get:
+#       summary: Get product image
+#       tags:
+#         - Public
+#         - Products
+#       parameters:
+#         - name: imageId
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       responses:
+#         '200':
+#           description: Image retrieved successfully
+#           content:
+#             image/jpeg:
+#               schema:
+#                 type: string
+#                 format: binary
+#         '404':
+#           description: Image not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /orders/cart:
+#     get:
+#       summary: Get cart details
+#       tags:
+#         - Orders
+#       security:
+#         - bearerAuth: []
+#       responses:
+#         '200':
+#           description: Cart retrieved
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '404':
+#           description: Cart not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#     post:
+#       summary: Add item to cart
+#       tags:
+#         - Orders
+#       security:
+#         - bearerAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/CartItemSchema'
+#       responses:
+#         '200':
+#           description: Item added to cart
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Validation error
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#     patch:
+#       summary: Update cart
+#       tags:
+#         - Orders
+#       security:
+#         - bearerAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/CartUpdateSchema'
+#       responses:
+#         '200':
+#           description: Cart updated
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Validation error
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#     delete:
+#       summary: Remove item from cart
+#       tags:
+#         - Orders
+#       security:
+#         - bearerAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/CartItemSchema'
+#       responses:
+#         '200':
+#           description: Item removed from cart
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Validation error
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /orders/cart/checkout:
+#     post:
+#       summary: Checkout cart
+#       tags:
+#         - Orders
+#       security:
+#         - bearerAuth: []
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/CheckoutSchema'
+#       responses:
+#         '201':
+#           description: Checkout successful
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Validation error
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/dashboard:
+#     get:
+#       summary: Get admin dashboard statistics
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       responses:
+#         '200':
+#           description: Dashboard statistics retrieved
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/orders:
+#     get:
+#       summary: Get all orders
+#       tags:
+#         - Admin
+#         - Orders
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: limit
+#           in: query
+#           schema:
+#             type: integer
+#             default: 10
+#         - name: offset
+#           in: query
+#           schema:
+#             type: integer
+#             default: 0
+#         - name: status
+#           in: query
+#           schema:
+#             type: string
+#             enum: [pending, shipped, delivered, canceled]
+#         - name: sortBy
+#           in: query
+#           schema:
+#             type: string
+#             default: createdAt
+#         - name: sortOrder
+#           in: query
+#           schema:
+#             type: string
+#             enum: [ASC, DESC]
+#             default: DESC
+#       responses:
+#         '200':
+#           description: Orders retrieved
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/orders/{id}:
+#     patch:
+#       summary: Update order status
+#       tags:
+#         - Admin
+#         - Orders
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               properties:
+#                 status:
+#                   type: string
+#                   enum: [pending, shipped, delivered, canceled]
+#               required:
+#                 - status
+#       responses:
+#         '200':
+#           description: Order status updated
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Validation error
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Order not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#     delete:
+#       summary: Cancel an order
+#       tags:
+#         - Admin
+#         - Orders
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       responses:
+#         '204':
+#           description: Order canceled
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Order not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/customers:
+#     get:
+#       summary: Get all customers
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: limit
+#           in: query
+#           schema:
+#             type: integer
+#             default: 10
+#         - name: offset
+#           in: query
+#           schema:
+#             type: integer
+#             default: 0
+#         - name: sortBy
+#           in: query
+#           schema:
+#             type: string
+#             default: createdAt
+#         - name: sortOrder
+#           in: query
+#           schema:
+#             type: string
+#             enum: [ASC, DESC]
+#             default: DESC
+#       responses:
+#         '200':
+#           description: Customers retrieved
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/customers/{id}:
+#     get:
+#       summary: Get customer details
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       responses:
+#         '200':
+#           description: Customer details retrieved
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '404':
+#           description: Customer not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#     delete:
+#       summary: Delete a customer
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       responses:
+#         '204':
+#           description: Customer deleted
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Customer not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#   /admin/customers/{id}/ban:
+#     patch:
+#       summary: Ban a customer
+#       tags:
+#         - Admin
+#       security:
+#         - bearerAuth: []
+#       parameters:
+#         - name: id
+#           in: path
+#           required: true
+#           schema:
+#             type: string
+#             format: uuid
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               properties:
+#                 status:
+#                   type: string
+#                   enum: [banned, active]
+#               required:
+#                 - status
+#       responses:
+#         '200':
+#           description: Customer banned successfully
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/ApiResponse'
+#         '400':
+#           description: Validation error
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '403':
+#           description: Forbidden
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+#         '404':
+#           description: Customer not found
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+
