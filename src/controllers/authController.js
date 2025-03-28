@@ -6,11 +6,63 @@ import { generateAndSendOtp, verifyOtp } from '../services/authService.js';
 import jwt from 'jsonwebtoken';
 import argon2 from 'argon2';
 
+// export const register = async (req, res, next) => {
+//   const { email, password, firstName, lastName, phone, role } = req.body;
+//   const t = await sequelize.transaction();
+//   try {
+//     // Assign role dynamically, defaulting to CUSTOMER if not provided
+//     const userRole = role || ROLES.CUSTOMER;
+
+//     const user = await User.create(
+//       {
+//         email,
+//         password,
+//         role: userRole,
+//       },
+//       { transaction: t },
+//     );
+
+//     await Customer.create({ userId: user.id, firstName, lastName, phone }, { transaction: t });
+//     await t.commit();
+//     const result = await generateAndSendOtp(user.id);
+//     return ApiResponse.success(res, result.message, { userId: user.id }, HTTP_STATUS_CODES.CREATED);
+//   } catch (error) {
+//     await t.rollback();
+//     next(error);
+//   }
+// };
+
+// export const register = async (req, res, next) => {
+//   const { email, password, firstName, lastName, phone, role } = req.body;
+//   const t = await sequelize.transaction();
+//   try {
+//     // Assign role dynamically, defaulting to CUSTOMER if not provided
+//     const userRole = role || ROLES.CUSTOMER;
+
+//     const user = await User.create(
+//       {
+//         email,
+//         password,
+//         role: userRole,
+//       },
+//       { transaction: t },
+//     );
+
+//     await Customer.create({ userId: user.id, firstName, lastName, phone }, { transaction: t });
+//     await t.commit();
+//     const result = await generateAndSendOtp(user.id);
+//     return ApiResponse.success(res, result.message, { userId: user.id }, HTTP_STATUS_CODES.CREATED);
+//   } catch (error) {
+//     await t.rollback();
+//     next(error);
+//   }
+// };
+
 export const register = async (req, res, next) => {
   const { email, password, firstName, lastName, phone, role } = req.body;
   const t = await sequelize.transaction();
+
   try {
-    // Assign role dynamically, defaulting to CUSTOMER if not provided
     const userRole = role || ROLES.CUSTOMER;
 
     const user = await User.create(
@@ -22,12 +74,42 @@ export const register = async (req, res, next) => {
       { transaction: t },
     );
 
-    await Customer.create({ userId: user.id, firstName, lastName, phone }, { transaction: t });
+    await Customer.create(
+      {
+        userId: user.id,
+        firstName,
+        lastName,
+        phone,
+      },
+      { transaction: t },
+    );
+
+    // Commit transaction before sending email
     await t.commit();
-    const result = await generateAndSendOtp(user.id);
-    return ApiResponse.success(res, result.message, { userId: user.id }, HTTP_STATUS_CODES.CREATED);
+
+    try {
+      const result = await generateAndSendOtp(user.id);
+      return ApiResponse.success(
+        res,
+        result.message,
+        { userId: user.id },
+        HTTP_STATUS_CODES.CREATED,
+      );
+    } catch (emailError) {
+      // Email failed but user was created successfully
+      console.error('OTP email failed:', emailError);
+      return ApiResponse.success(
+        res,
+        'User created but OTP email failed',
+        { userId: user.id },
+        HTTP_STATUS_CODES.CREATED,
+      );
+    }
   } catch (error) {
-    await t.rollback();
+    // Only rollback if transaction hasn't been committed
+    if (!t.finished) {
+      await t.rollback();
+    }
     next(error);
   }
 };
