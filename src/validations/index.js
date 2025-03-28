@@ -53,7 +53,7 @@ export const otpVerificationSchema = Joi.object({
         'string.length': ERROR_MESSAGES.INVALID_OTP,
         'any.required': ERROR_MESSAGES.VALIDATION_ERROR
     })
-})
+});
 
 // Forgot Password Schema
 export const forgotPasswordSchema = Joi.object({
