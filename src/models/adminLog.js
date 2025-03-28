@@ -10,8 +10,10 @@ const AdminLog = sequelize.define(
       primaryKey: true
     },
     action: {
-      type: DataTypes.STRING,
-      allowNull: false
+      //type: DataTypes.STRING,
+      allowNull: false,
+      type: DataTypes.INTEGER,
+
     },
     entity: {
       type: DataTypes.STRING,
