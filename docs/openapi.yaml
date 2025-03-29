@@ -6,8 +6,8 @@ info:
   contact:
     email: support@omorix.com
 servers:
-  - url: https://omorix-backend-2.onrender.com/api
-    description: Production Server
+  - url: http://localhost:3000/api
+    description: Local Server
 components:
   securitySchemes:
     bearerAuth:
