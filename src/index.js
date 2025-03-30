@@ -7,11 +7,10 @@ import cron from 'node-cron';
 
 dotenv.config();
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   try {
-    // await sequelize.sync({ force: true });
     await sequelize.sync();
     app.listen(PORT, '0.0.0.0', () => {
       logger.info(`Server is running on port ${PORT}`);
@@ -33,9 +32,9 @@ function keepAlive(url) {
 }
 
 // Schedule a job to keep the server alive
- cron.schedule('*/5 * * * *', () => {
+cron.schedule('*/5 * * * *', () => {
   keepAlive('https://omorix-backend-2.onrender.com');
   logger.info('Pinged the server every 5 minutes');
 });
 
-startServer(); 
+startServer();

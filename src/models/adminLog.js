@@ -1,5 +1,5 @@
-import { DataTypes } from 'sequelize'
-import sequelize from '../config/database.js'
+import { DataTypes } from 'sequelize';
+import sequelize from '../config/database.js';
 
 const AdminLog = sequelize.define(
   'AdminLog',
@@ -7,33 +7,33 @@ const AdminLog = sequelize.define(
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
-      primaryKey: true
+      primaryKey: true,
     },
     action: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
     },
     entity: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
     },
     entityId: {
       type: DataTypes.UUID,
-      allowNull: true
+      allowNull: true,
     },
     details: {
       type: DataTypes.JSON,
-      allowNull: true
+      allowNull: true,
     },
     ipAddress: {
       type: DataTypes.STRING,
-      allowNull: true
-    }
+      allowNull: true,
+    },
   },
   {
     timestamps: true,
-    indexes: [{ name: 'admin_log_entity_index', fields: ['entity', 'entityId'] }]
-  }
-)
+    indexes: [{ name: 'admin_log_entity_index', fields: ['entity', 'entityId'] }],
+  },
+);
 
-export default AdminLog
+export default AdminLog;

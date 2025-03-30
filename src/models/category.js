@@ -31,7 +31,7 @@ const Category = sequelize.define(
       }
     },
     image: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true
     },
     isActive: {

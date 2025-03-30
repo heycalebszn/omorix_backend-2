@@ -9,8 +9,8 @@ import Joi from 'joi';
 
 const router = express.Router();
 
-router.get('/cart', authenticateToken, getCart);
-router.post('/cart', validateRequest(cartItemSchema), addToCart);
+router.get('/cart/:cartId', authenticateToken, getCart);
+router.post('/cart', authenticateToken, validateRequest(cartItemSchema), addToCart);
 router.patch('/cart', authenticateToken, validateRequest(cartUpdateSchema), updateCart);
 router.delete('/cart', authenticateToken, validateRequest(cartItemSchema), removeFromCart);
 router.post('/cart/checkout', checkout);

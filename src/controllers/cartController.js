@@ -4,18 +4,41 @@ import ApiResponse from '../utils/ApiResponse.js';
 import { HTTP_STATUS_CODES, ERROR_MESSAGES, ORDER_STATUS, CART_STATUS, PAYMENT_METHODS, SHIPPING_METHODS, PAYMENT_STATUS } from '../constants/constant.js';
 import { sendOrderConfirmationEmail } from '../services/emailService.js';
 
+
 export const getCart = async (req, res, next) => {
     try {
         let cart;
-        if (req.user) {
-            cart = await Cart.findOne({ where: { userId: req.user.id, status: CART_STATUS.ACTIVE } });
-        } else {
-            cart = await Cart.findOne({ where: { sessionId: req.session?.id || 'guest-session', status: CART_STATUS.ACTIVE } });
+        const cartIdFromParam = req.params.cartId; // Use :cartId from route
+
+        if (!req.user || !req.user.id) {
+            throw new Error('Authentication required');
         }
 
-        if (!cart) {
-            cart = await Cart.create({ userId: req.user?.id, status: CART_STATUS.ACTIVE });
+        if (cartIdFromParam) {
+            cart = await Cart.findOne({
+                where: { id: cartIdFromParam, userId: req.user.id, status: CART_STATUS.ACTIVE }
+            });
+            if (!cart) {
+                throw new Error('Cart not found or inactive');
+            }
+            console.log('GetCart - Using explicit cartId from param:', cartIdFromParam);
+        } else {
+            const activeCarts = await Cart.findAll({
+                where: { userId: req.user.id, status: CART_STATUS.ACTIVE },
+                order: [['createdAt', 'ASC']]
+            });
+            console.log('GetCart - All active carts for user:', req.user.id, activeCarts.map(c => c.id));
+
+            cart = activeCarts.length ? activeCarts[0] : await Cart.create({
+                userId: req.user.id,
+                sessionId: null,
+                status: CART_STATUS.ACTIVE,
+                expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            });
+            console.log('GetCart - Selected/Created cart for user:', req.user.id, 'CartId:', cart.id);
         }
+
+        console.log('GetCart - Final CartId:', cart.id, 'User:', req.user.id);
 
         const items = await CartItem.findAll({
             where: { cartId: cart.id },
@@ -34,77 +57,90 @@ export const getCart = async (req, res, next) => {
             ]
         });
 
-        const total = items.reduce((sum, item) => sum + (item.unitPrice || 0) * item.quantity, 0);
+        if (!items.length) {
+            console.warn(`No items found for cartId: ${cart.id}`);
+            const dbItems = await CartItem.findAll({ where: { cartId: cart.id } });
+            console.log('GetCart - Raw CartItem count from DB:', dbItems.length);
+        } else {
+            console.log('GetCart - Found items:', items.length);
+        }
 
-        return ApiResponse.success(res, 'Cart retrieved', { cart, items, total });
+        const formattedItems = items.map(item => {
+            const product = item.product;
+            const variant = item.variantId
+                ? product.variants.find(v => v.id === item.variantId)
+                : null;
+
+            return {
+                id: item.id,
+                cartId: item.cartId,
+                productId: item.productId,
+                variantId: item.variantId,
+                quantity: item.quantity,
+                unitPrice: parseFloat(item.unitPrice || product.price),
+                addedAt: item.addedAt,
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt,
+                product: {
+                    id: product.id,
+                    name: product.name,
+                    slug: product.slug,
+                    description: product.description,
+                    price: parseFloat(product.price),
+                    discountPercentage: product.discountPercentage || 0,
+                    stockQuantity: product.stockQuantity,
+                    sku: product.sku,
+                    isActive: product.isActive,
+                    featuredImage: product.featuredImage || null,
+                    createdAt: product.createdAt,
+                    updatedAt: product.updatedAt,
+                    variants: variant
+                        ? [{
+                            id: variant.id,
+                            productId: variant.productId,
+                            size: variant.size,
+                            color: variant.color,
+                            material: variant.material,
+                            additionalAttributes: variant.additionalAttributes || null,
+                            price: parseFloat(variant.price || product.price),
+                            stockQuantity: variant.stockQuantity,
+                            sku: variant.sku,
+                            createdAt: variant.createdAt,
+                            updatedAt: variant.updatedAt
+                        }]
+                        : []
+                }
+            };
+        });
+
+        const subtotal = formattedItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+        const discount = subtotal >= 1000 ? subtotal * 0.1 : 0;
+        const shipping = 70.00;
+        const grandTotal = subtotal - discount + shipping;
+
+        const response = {
+            cart: {
+                id: cart.id,
+                userId: cart.userId,
+                sessionId: cart.sessionId,
+                status: cart.status,
+                expiryDate: cart.expiryDate
+            },
+            items: formattedItems,
+            summary: {
+                subtotal: parseFloat(subtotal.toFixed(2)),
+                discount: parseFloat(discount.toFixed(2)),
+                shipping: parseFloat(shipping.toFixed(2)),
+                grandTotal: parseFloat(grandTotal.toFixed(2))
+            }
+        };
+
+        return ApiResponse.success(res, 'Cart retrieved successfully', response);
     } catch (error) {
+        console.error('Error in getCart:', error.message, error.stack);
         next(error);
     }
 };
-
-// export const addToCart = async (req, res, next) => {
-//     const { productId, variantId, quantity } = req.body;
-//     let t;
-//     try {
-//         t = await sequelize.transaction();
-
-//         if (!variantId) {
-//             throw new Error('variantId is required');
-//         }
-//         if (quantity <= 0) {
-//             throw new Error('Quantity must be positive');
-//         }
-
-//         let cart = await Cart.findOne({ where: { userId: req.user.id, status: CART_STATUS.ACTIVE } });
-//         if (!cart) {
-//             cart = await Cart.create({ userId: req.user.id, status: CART_STATUS.ACTIVE }, { transaction: t });
-//         }
-
-//         const product = await Product.findByPk(productId, { transaction: t });
-//         if (!product) {
-//             throw new Error(ERROR_MESSAGES.PRODUCT_NOT_FOUND);
-//         }
-
-//         const productVariant = await ProductVariant.findByPk(variantId, { transaction: t });
-//         if (!productVariant || productVariant.productId !== productId) {
-//             throw new Error('Invalid product variant');
-//         }
-//         if (productVariant.stockQuantity < quantity) {
-//             throw new Error('Insufficient stock for variant');
-//         }
-
-//         const unitPrice = ProductVariant.price || Product.price;
-
-//         const existingItem = await CartItem.findOne({
-//             where: { cartId: cart.id, productId, variantId },
-//             transaction: t
-//         });
-
-//         if (existingItem) {
-//             existingItem.quantity += quantity;
-//             await existingItem.update({ quantity: existingItem.quantity, unitPrice }, { transaction: t });
-//         } else {
-//             await CartItem.create({
-//                 cartId: cart.id,
-//                 productId,
-//                 variantId,
-//                 quantity,
-//                 unitPrice,
-//                 addedAt: new Date()
-//             }, { transaction: t });
-//         }
-
-//         await t.commit();
-//         const cartItems = await getCartItems(cart.id);
-//         return ApiResponse.success(res, 'Item added to cart', cartItems);
-//     } catch (error) {
-//         if (t && !t.finished) {
-//             await t.rollback();
-//         }
-//         next(error);
-//     }
-// };
-
 
 export const addToCart = async (req, res, next) => {
     const { productId, variantId, quantity } = req.body;
@@ -120,18 +156,29 @@ export const addToCart = async (req, res, next) => {
         }
 
         let cart;
-        if (req.user) {
-            cart = await Cart.findOne({ where: { userId: req.user.id, status: CART_STATUS.ACTIVE } });
-        } else {
-            cart = await Cart.findOne({ where: { sessionId: req.session?.id || 'guest-session', status: CART_STATUS.ACTIVE } });
+        if (!req.user || !req.user.id) {
+            throw new Error('Authentication required');
         }
 
+        // Find the oldest active cart for the authenticated user
+        cart = await Cart.findOne({
+            where: { userId: req.user.id, status: CART_STATUS.ACTIVE },
+            order: [['createdAt', 'ASC']],
+            transaction: t
+        });
         if (!cart) {
             cart = await Cart.create(
-                { userId: req.user?.id, sessionId: req.user ? null : req.session?.id || 'guest-session', status: CART_STATUS.ACTIVE },
+                {
+                    userId: req.user.id,
+                    sessionId: null,
+                    status: CART_STATUS.ACTIVE,
+                    expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                },
                 { transaction: t }
             );
         }
+
+        console.log('AddToCart - User:', req.user.id, 'CartId:', cart.id);
 
         const product = await Product.findByPk(productId, { transaction: t });
         if (!product) {
@@ -146,7 +193,10 @@ export const addToCart = async (req, res, next) => {
             throw new Error('Insufficient stock for variant');
         }
 
-        const unitPrice = productVariant.price || product.price;
+        const unitPrice = parseFloat(productVariant.price || product.price);
+        if (isNaN(unitPrice) || unitPrice <= 0) {
+            throw new Error(`Invalid price for product: ${productVariant.price || product.price}`);
+        }
 
         const existingItem = await CartItem.findOne({
             where: { cartId: cart.id, productId, variantId },
@@ -168,31 +218,47 @@ export const addToCart = async (req, res, next) => {
         }
 
         await t.commit();
+        console.log('Transaction committed, cartId:', cart.id);
 
-        // Fetch updated cart items
         const cartItems = await getCartItems(cart.id);
+        if (!cartItems.length) {
+            console.warn('No items found after adding to cart:', cart.id);
+        }
 
-        // Calculate totals
-        const subtotal = cartItems.reduce((sum, item) => sum + (item.unitPrice || 0) * item.quantity, 0);
+        const subtotal = cartItems.reduce((sum, item) => sum + (parseFloat(item.unitPrice) * item.quantity), 0);
         const discount = subtotal >= 1000 ? subtotal * 0.1 : 0;
-        const grandTotal = subtotal - discount;
+        const shipping = 10.00;
+        const grandTotal = subtotal - discount + shipping;
 
         return ApiResponse.success(res, 'Item added to cart', {
-            cartItems,
+            cartItems: cartItems.map(item => ({
+                id: item.id,
+                cartId: item.cartId,
+                productId: item.productId,
+                variantId: item.variantId,
+                quantity: item.quantity,
+                unitPrice: parseFloat(item.unitPrice),
+                addedAt: item.addedAt,
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt,
+                product: item.product
+            })),
             summary: {
-                subtotal,
-                discount,
-                grandTotal
+                subtotal: parseFloat(subtotal.toFixed(2)),
+                discount: parseFloat(discount.toFixed(2)),
+                shipping: parseFloat(shipping.toFixed(2)),
+                grandTotal: parseFloat(grandTotal.toFixed(2))
             }
         });
     } catch (error) {
         if (t && !t.finished) {
             await t.rollback();
+            console.error('Transaction rolled back:', error.message);
         }
+        console.error('Error in addToCart:', error.message, error.stack);
         next(error);
     }
 };
-
 
 
 
@@ -238,283 +304,6 @@ export const removeFromCart = async (req, res, next) => {
         next(error);
     }
 };
-
-// export const checkout = async (req, res, next) => {
-//     const {
-//         shippingFirstName,
-//         shippingLastName,
-//         shippingAddress,
-//         shippingCity,
-//         shippingState,
-//         shippingZip,
-//         shippingCountry,
-//         shippingPhone,
-//         shippingMethod,
-//         paymentMethod
-//     } = req.body;
-
-//     const t = await sequelize.transaction();
-//     try {
-//         const cart = await Cart.findOne({ where: { userId: req.user.id, status: CART_STATUS.ACTIVE }, transaction: t });
-//         if (!cart) throw new Error(ERROR_MESSAGES.CART_NOT_FOUND);
-
-//         const items = await CartItem.findAll({ where: { cartId: cart.id }, transaction: t });
-//         if (!items.length) throw new Error(ERROR_MESSAGES.CART_EMPTY);
-
-//         const productIds = items.map(item => item.productId);
-//         const variantIds = items.map(item => item.variantId).filter(Boolean);
-//         const [products, variants, user] = await Promise.all([
-//             Product.findAll({ where: { id: productIds }, transaction: t }),
-//             ProductVariant.findAll({ where: { id: variantIds }, transaction: t }),
-//             User.findByPk(req.user.id, { attributes: ['email'], transaction: t })
-//         ]);
-
-//         const productMap = new Map(products.map(product => [product.id, product]));
-//         const variantMap = new Map(variants.map(variant => [variant.id, variant]));
-
-//         let subtotal = 0;
-//         for (const item of items) {
-//             const product = productMap.get(item.productId);
-//             const variant = item.variantId ? variantMap.get(item.variantId) : null;
-//             if (!product || product.stockQuantity < item.quantity) throw new Error(ERROR_MESSAGES.PRODUCT_INSUFFICIENT_STOCK);
-//             subtotal += (variant ? variant.price || product.price : product.price) * item.quantity;
-//         }
-
-//         const tax = 0.0;
-//         const shippingCost = shippingMethod === 'free_shipping' ? 0.0 : 10.0;
-//         const totalAmount = subtotal + tax + shippingCost;
-//         const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-
-//         const order = await Order.create({
-//             userId: req.user.id,
-//             orderNumber,
-//             status: ORDER_STATUS.PENDING,
-//             totalAmount,
-//             subtotal,
-//             tax,
-//             shippingCost,
-//             shippingFirstName,
-//             shippingLastName,
-//             shippingAddress,
-//             shippingCity,
-//             shippingState,
-//             shippingZip,
-//             shippingCountry,
-//             shippingPhone,
-//             shippingMethod,
-//             paymentMethod,
-//             email: user.email
-//         }, { transaction: t });
-
-//         const orderItems = items.map(item => {
-//             const product = productMap.get(item.productId);
-//             const variant = item.variantId ? variantMap.get(item.variantId) : null;
-//             const unitPrice = variant ? variant.price || product.price : product.price;
-//             return {
-//                 orderId: order.id,
-//                 productId: item.productId,
-//                 variantId: item.variantId,
-//                 quantity: item.quantity,
-//                 unitPrice,
-//                 subtotal: unitPrice * item.quantity
-//             };
-//         });
-
-//         await OrderOrderItem.bulkCreate(orderItems, { transaction: t });
-
-//         await Promise.all(items.map(({ productId, variantId, quantity }) =>
-//             (variantId ? ProductVariant : Product).update(
-//                 { stockQuantity: sequelize.literal(`stockQuantity - ${quantity}`) },
-//                 { where: { id: variantId || productId }, transaction: t }
-//             )
-//         ));
-
-//         await Cart.update({ status: CART_STATUS.CONVERTED }, { where: { id: cart.id }, transaction: t });
-//         await CartItem.destroy({ where: { cartId: cart.id }, transaction: t });
-
-//         await t.commit();
-//         return ApiResponse.success(res, 'Checkout successful', await Order.findByPk(order.id, { include: [{ model: OrderItem, as: 'items' }] }), HTTP_STATUS_CODES.CREATED);
-//     } catch (error) {
-//         await t.rollback();
-//         next(error);
-//     }
-// };
-
-
-
-// Helper function to get cart items
-
-// export const checkout = async (req, res, next) => {
-//     const {
-//         firstName,
-//         lastName,
-//         phone,
-//         email, // For guests
-//         deliveryAddress,
-//         city,
-//         postCode,
-//         country,
-//         paymentMethod: rawPaymentMethod, // Destructure paymentMethod
-//         shippingMethod = SHIPPING_METHODS.STANDARD // Default shipping method
-//     } = req.body;
-
-//     const t = await sequelize.transaction();
-//     try {
-//         let cart;
-//         let userEmail;
-
-//         // Validate paymentMethod
-//         const validPaymentMethods = Object.values(PAYMENT_METHODS);
-//         const paymentMethod = validPaymentMethods.includes(rawPaymentMethod)
-//             ? rawPaymentMethod
-//             : (PAYMENT_METHODS.PAYPAL || 'paypal'); // Fallback to 'paypal' if undefined
-
-//         if (!validPaymentMethods.includes(rawPaymentMethod)) {
-//             console.warn(`Invalid payment method "${rawPaymentMethod}" provided. Defaulting to "${PAYMENT_METHODS.PAYPAL || 'paypal'}".`);
-//         }
-
-//         // Check if the user is authenticated or a guest
-//         if (req.user) {
-//             cart = await Cart.findOne({ where: { userId: req.user.id, status: CART_STATUS.ACTIVE }, transaction: t });
-//             if (!cart) {
-//                 cart = await Cart.create({
-//                     userId: req.user.id,
-//                     status: CART_STATUS.ACTIVE,
-//                     expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-//                 }, { transaction: t });
-//             }
-//             const user = await User.findByPk(req.user.id, { attributes: ['email'], transaction: t });
-//             userEmail = user.email;
-//         } else {
-//             const sessionId = req.session?.id || 'guest-session';
-//             cart = await Cart.findOne({ where: { sessionId, status: CART_STATUS.ACTIVE }, transaction: t });
-//             if (!cart) {
-//                 cart = await Cart.create({
-//                     sessionId,
-//                     status: CART_STATUS.ACTIVE,
-//                     expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-//                 }, { transaction: t });
-//             }
-//             if (!email) {
-//                 throw new Error('Email is required for guest checkout');
-//             }
-//             userEmail = email;
-//         }
-
-//         if (!cart) throw new Error(ERROR_MESSAGES.CART_NOT_FOUND);
-
-//         const items = await CartItem.findAll({ where: { cartId: cart.id }, transaction: t });
-//         if (!items.length) throw new Error(ERROR_MESSAGES.CART_EMPTY);
-
-//         const productIds = items.map(item => item.productId);
-//         const variantIds = items.map(item => item.variantId).filter(Boolean);
-//         const [products, variants] = await Promise.all([
-//             Product.findAll({ where: { id: productIds }, transaction: t }),
-//             ProductVariant.findAll({ where: { id: variantIds }, transaction: t })
-//         ]);
-
-//         const productMap = new Map(products.map(product => [product.id, product]));
-//         const variantMap = new Map(variants.map(variant => [variant.id, variant]));
-
-//         let subtotal = 0;
-//         const orderItemsDetails = [];
-//         for (const item of items) {
-//             const product = productMap.get(item.productId);
-//             const variant = item.variantId ? variantMap.get(item.variantId) : null;
-//             if (!product || product.stockQuantity < item.quantity) throw new Error(ERROR_MESSAGES.PRODUCT_INSUFFICIENT_STOCK);
-
-//             // Log the price values for debugging
-//             console.log(`Product ID: ${item.productId}, Product Price: ${product.price}, Variant Price: ${variant?.price}`);
-
-//             const unitPriceRaw = variant ? variant.price || product.price : product.price;
-//             const unitPrice = parseFloat(unitPriceRaw) || 0; // Convert to number, default to 0 if invalid
-
-//             if (isNaN(unitPrice)) {
-//                 console.error(`Invalid unitPrice for product ID ${item.productId}: ${unitPriceRaw}`);
-//                 throw new Error('Invalid price for product');
-//             }
-
-//             subtotal += unitPrice * item.quantity;
-//             orderItemsDetails.push({
-//                 name: product.name,
-//                 quantity: item.quantity,
-//                 unitPrice: unitPrice.toFixed(2),
-//                 total: (unitPrice * item.quantity).toFixed(2)
-//             });
-//         }
-
-//         const tax = 0.0;
-//         const deliveryFee = 10.0; // Hardcoded for now, as per Figma (£10.00)
-//         const totalAmount = subtotal + tax + deliveryFee;
-//         const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-
-//         // Create the order in the database
-//         const order = await Order.create({
-//             userId: req.user?.id || null, // Null for guests
-//             orderNumber,
-//             status: ORDER_STATUS.PENDING,
-//             totalAmount,
-//             subtotal,
-//             tax,
-//             deliveryFee,
-//             firstName,
-//             lastName,
-//             deliveryAddress,
-//             city,
-//             postCode,
-//             country,
-//             phone,
-//             paymentMethod, // Use the validated paymentMethod
-//             paymentStatus: PAYMENT_STATUS.PENDING,
-//             shippingMethod,
-//             email: userEmail,
-//             processedAt: new Date()
-//         }, { transaction: t });
-
-//         const orderItems = items.map(item => {
-//             const product = productMap.get(item.productId);
-//             const variant = item.variantId ? variantMap.get(item.variantId) : null;
-//             const unitPriceRaw = variant ? variant.price || product.price : product.price;
-//             const unitPrice = parseFloat(unitPriceRaw) || 0;
-
-//             return {
-//                 orderId: order.id,
-//                 productId: item.productId,
-//                 variantId: item.variantId,
-//                 quantity: item.quantity,
-//                 unitPrice,
-//                 subtotal: unitPrice * item.quantity
-//             };
-//         });
-
-//         await OrderOrderItem.bulkCreate(orderItems, { transaction: t });
-
-//         await Promise.all(items.map(({ productId, variantId, quantity }) =>
-//             (variantId ? ProductVariant : Product).update(
-//                 { stockQuantity: sequelize.literal(`"stockQuantity" - ${quantity}`) }, // Use quoted column name
-//                 { where: { id: variantId || productId }, transaction: t }
-//             )
-//         ));
-
-//         await Cart.update({ status: CART_STATUS.CONVERTED }, { where: { id: cart.id }, transaction: t });
-//         await CartItem.destroy({ where: { cartId: cart.id }, transaction: t });
-
-//         // Send order confirmation email
-//         await sendOrderConfirmationEmail(userEmail, order, orderItems);
-
-//         await t.commit();
-
-//         // Return a simple success response
-//         return ApiResponse.success(res, 'Checkout successful', {
-//             orderId: order.id
-//         }, HTTP_STATUS_CODES.CREATED);
-//     } catch (error) {
-//         await t.rollback();
-//         next(error);
-//     }
-// };
-
-
 // UPDATED CHECKOUT FUNCTION WITH PAYPAL PAYMENT INTEGRATION
 export const checkout = async (req, res, next) => {
     const {
@@ -689,7 +478,7 @@ export const checkout = async (req, res, next) => {
                 const orderWithItems = await Order.findByPk(order.id, {
                     include: [{ model: OrderItem, as: 'items' }]
                 });
-                
+
                 // Format order data for PayPal
                 const paypalOrderInfo = {
                     id: orderWithItems.id,
@@ -711,11 +500,11 @@ export const checkout = async (req, res, next) => {
                         quantity: item.quantity
                     }))
                 };
-                
+
                 // Create PayPal order
                 const paypalService = await import('../services/paypalService.js');
                 paypalOrderData = await paypalService.createPayPalOrder(paypalOrderInfo);
-                
+
                 // Update order with PayPal order ID
                 await Order.update(
                     { paypalOrderId: paypalOrderData.id },
@@ -733,7 +522,7 @@ export const checkout = async (req, res, next) => {
                 const orderWithItems = await Order.findByPk(order.id, {
                     include: [{ model: OrderItem, as: 'items' }]
                 });
-                
+
                 // Send confirmation email
                 await sendOrderConfirmationEmail(userEmail, orderWithItems, orderWithItems.items);
             } catch (emailError) {
@@ -765,8 +554,6 @@ export const checkout = async (req, res, next) => {
     }
 };
 
-
-
 async function getCartItems(cartId) {
     try {
         const items = await CartItem.findAll({
@@ -774,20 +561,23 @@ async function getCartItems(cartId) {
             include: [
                 {
                     model: Product,
-                    as: 'product', // Match the alias defined in CartItem.belongsTo(Product, { as: 'product' })
+                    as: 'product',
                     include: [
                         {
                             model: ProductVariant,
-                            as: 'variants', // Match the alias defined in Product.hasMany(ProductVariant, { as: 'variants' })
-                            required: false // Make ProductVariant optional
+                            as: 'variants',
+                            required: false
                         }
                     ]
                 }
             ]
         });
+        if (!items.length) {
+            console.warn(`No items found for cartId: ${cartId}`);
+        }
         return items;
     } catch (error) {
-        console.error('Error in getCartItems:', error);
-        return []; // Return empty array to prevent crashes
+        console.error('Error in getCartItems:', error.message, error.stack);
+        return [];
     }
 }

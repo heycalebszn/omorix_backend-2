@@ -1,10 +1,10 @@
 import express from 'express';
 import { authenticateToken, optionalAuthenticateToken } from '../utils/authMiddleware.js';
-import { 
-    createPaymentOrder, 
-    capturePayment, 
-    handlePayPalWebhook,
-    getPaymentStatus
+import {
+  createPaymentOrder,
+  capturePayment,
+  handlePayPalWebhook,
+  getPaymentStatus,
 } from '../controllers/paypalController.js';
 
 const router = express.Router();
