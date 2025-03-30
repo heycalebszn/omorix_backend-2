@@ -21,5 +21,3 @@ router.get('/status/:orderId', getOrderStatus);
 router.post('/cancel/:orderId', authenticateToken, validateRequest(Joi.object({ cancelReason: Joi.string().optional() })), cancelOrder);
 
 export default router;
-
-
