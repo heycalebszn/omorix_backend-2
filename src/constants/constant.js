@@ -320,6 +320,24 @@ export const ERROR_TYPES = {
     CLIENT: 'client_error'
 }
 
+export const SHIPPING_FEES = {
+    [SHIPPING_METHODS.STANDARD]: 70.00, // £70 for standard shipping
+    [SHIPPING_METHODS.EXPRESS]: 120.00, // £120 for express shipping
+    [SHIPPING_METHODS.FREE_SHIPPING]: 0.00 // £0 for free shipping
+};
+
+const VALID_COUPONS = {
+    'SAVE10': 0.10, // 10% discount
+    'FREESHIP': 0.00 // Could be used to set shipping to free, but we'll handle via shippingMethod
+};
+
+export const validateCoupon = (couponCode) => {
+    if (!couponCode) return { valid: false, discountRate: 0 };
+    const discountRate = VALID_COUPONS[couponCode.toUpperCase()];
+    if (discountRate === undefined) return { valid: false, discountRate: 0 };
+    return { valid: true, discountRate };
+};
+
 export const EMAIL_CONFIG = {
     SMTP_HOST: 'smtp.gmail.com',
     SMTP_PORT: 587,

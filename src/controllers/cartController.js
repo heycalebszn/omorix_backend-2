@@ -1,44 +1,70 @@
 import sequelize from '../config/database.js';
 import { Cart, CartItem, Product, ProductVariant, Order, OrderItem as OrderOrderItem, User, OrderItem } from '../models/index.js';
 import ApiResponse from '../utils/ApiResponse.js';
-import { HTTP_STATUS_CODES, ERROR_MESSAGES, ORDER_STATUS, CART_STATUS, PAYMENT_METHODS, SHIPPING_METHODS, PAYMENT_STATUS } from '../constants/constant.js';
+import { HTTP_STATUS_CODES, ERROR_MESSAGES, ORDER_STATUS, CART_STATUS, PAYMENT_METHODS, SHIPPING_METHODS, PAYMENT_STATUS, SHIPPING_FEES } from '../constants/constant.js';
 import { sendOrderConfirmationEmail } from '../services/emailService.js';
 
 
 export const getCart = async (req, res, next) => {
     try {
         let cart;
-        const cartIdFromParam = req.params.cartId; // Use :cartId from route
+        const cartIdFromParam = req.params.cartId;
 
-        if (!req.user || !req.user.id) {
-            throw new Error('Authentication required');
-        }
+        if (req.user && req.user.id) {
+            console.log('GetCart - Authenticated user:', req.user.id);
+            if (cartIdFromParam) {
+                cart = await Cart.findOne({
+                    where: { id: cartIdFromParam, userId: req.user.id, status: CART_STATUS.ACTIVE }
+                });
+                if (!cart) {
+                    throw new Error('Cart not found or inactive');
+                }
+                console.log('GetCart - Using explicit cartId from param:', cartIdFromParam);
+            } else {
+                const activeCarts = await Cart.findAll({
+                    where: { userId: req.user.id, status: CART_STATUS.ACTIVE },
+                    order: [['createdAt', 'ASC']]
+                });
+                console.log('GetCart - All active carts for user:', req.user.id, activeCarts.map(c => c.id));
 
-        if (cartIdFromParam) {
-            cart = await Cart.findOne({
-                where: { id: cartIdFromParam, userId: req.user.id, status: CART_STATUS.ACTIVE }
-            });
-            if (!cart) {
-                throw new Error('Cart not found or inactive');
+                cart = activeCarts.length ? activeCarts[0] : await Cart.create({
+                    userId: req.user.id,
+                    sessionId: null,
+                    status: CART_STATUS.ACTIVE,
+                    expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                });
+                console.log('GetCart - Selected/Created cart for user:', req.user.id, 'CartId:', cart.id);
             }
-            console.log('GetCart - Using explicit cartId from param:', cartIdFromParam);
         } else {
-            const activeCarts = await Cart.findAll({
-                where: { userId: req.user.id, status: CART_STATUS.ACTIVE },
-                order: [['createdAt', 'ASC']]
-            });
-            console.log('GetCart - All active carts for user:', req.user.id, activeCarts.map(c => c.id));
+            console.log('GetCart - Guest user detected');
+            const sessionId = req.session?.id || 'guest-session';
+            console.log('GetCart - Session ID:', sessionId);
+            if (cartIdFromParam) {
+                cart = await Cart.findOne({
+                    where: { id: cartIdFromParam, sessionId, status: CART_STATUS.ACTIVE }
+                });
+                if (!cart) {
+                    throw new Error('Cart not found or inactive');
+                }
+                console.log('GetCart - Using explicit cartId from param:', cartIdFromParam);
+            } else {
+                const activeCarts = await Cart.findAll({
+                    where: { sessionId, status: CART_STATUS.ACTIVE },
+                    order: [['createdAt', 'ASC']]
+                });
+                console.log('GetCart - All active carts for session:', sessionId, activeCarts.map(c => c.id));
 
-            cart = activeCarts.length ? activeCarts[0] : await Cart.create({
-                userId: req.user.id,
-                sessionId: null,
-                status: CART_STATUS.ACTIVE,
-                expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-            });
-            console.log('GetCart - Selected/Created cart for user:', req.user.id, 'CartId:', cart.id);
+                cart = activeCarts.length ? activeCarts[0] : await Cart.create({
+                    userId: null,
+                    sessionId,
+                    status: CART_STATUS.ACTIVE,
+                    expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                });
+                console.log('GetCart - Selected/Created cart for session:', sessionId, 'CartId:', cart.id);
+            }
         }
 
-        console.log('GetCart - Final CartId:', cart.id, 'User:', req.user.id);
+        console.log('GetCart - Final CartId:', cart.id);
 
         const items = await CartItem.findAll({
             where: { cartId: cart.id },
@@ -114,9 +140,10 @@ export const getCart = async (req, res, next) => {
         });
 
         const subtotal = formattedItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
-        const discount = subtotal >= 1000 ? subtotal * 0.1 : 0;
-        const shipping = 70.00;
-        const grandTotal = subtotal - discount + shipping;
+        const discount = 0; // No coupon system
+        const shipping = 0; // No shipping method at this stage
+        const tax = 0; // No tax info at this stage
+        const grandTotal = subtotal - discount + shipping + tax;
 
         const response = {
             cart: {
@@ -131,7 +158,9 @@ export const getCart = async (req, res, next) => {
                 subtotal: parseFloat(subtotal.toFixed(2)),
                 discount: parseFloat(discount.toFixed(2)),
                 shipping: parseFloat(shipping.toFixed(2)),
-                grandTotal: parseFloat(grandTotal.toFixed(2))
+                tax: parseFloat(tax.toFixed(2)),
+                grandTotal: parseFloat(grandTotal.toFixed(2)),
+                itemCount: formattedItems.length
             }
         };
 
@@ -156,29 +185,47 @@ export const addToCart = async (req, res, next) => {
         }
 
         let cart;
-        if (!req.user || !req.user.id) {
-            throw new Error('Authentication required');
+        if (req.user && req.user.id) {
+            console.log('AddToCart - Authenticated user:', req.user.id);
+            cart = await Cart.findOne({
+                where: { userId: req.user.id, status: CART_STATUS.ACTIVE },
+                order: [['createdAt', 'ASC']],
+                transaction: t
+            });
+            if (!cart) {
+                cart = await Cart.create(
+                    {
+                        userId: req.user.id,
+                        sessionId: null,
+                        status: CART_STATUS.ACTIVE,
+                        expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                    },
+                    { transaction: t }
+                );
+            }
+        } else {
+            console.log('AddToCart - Guest user detected');
+            const sessionId = req.session?.id || 'guest-session';
+            console.log('AddToCart - Session ID:', sessionId);
+            cart = await Cart.findOne({
+                where: { sessionId, status: CART_STATUS.ACTIVE },
+                order: [['createdAt', 'ASC']],
+                transaction: t
+            });
+            if (!cart) {
+                cart = await Cart.create(
+                    {
+                        userId: null,
+                        sessionId,
+                        status: CART_STATUS.ACTIVE,
+                        expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                    },
+                    { transaction: t }
+                );
+            }
         }
 
-        // Find the oldest active cart for the authenticated user
-        cart = await Cart.findOne({
-            where: { userId: req.user.id, status: CART_STATUS.ACTIVE },
-            order: [['createdAt', 'ASC']],
-            transaction: t
-        });
-        if (!cart) {
-            cart = await Cart.create(
-                {
-                    userId: req.user.id,
-                    sessionId: null,
-                    status: CART_STATUS.ACTIVE,
-                    expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-                },
-                { transaction: t }
-            );
-        }
-
-        console.log('AddToCart - User:', req.user.id, 'CartId:', cart.id);
+        console.log('AddToCart - Cart ID:', cart.id);
 
         const product = await Product.findByPk(productId, { transaction: t });
         if (!product) {
@@ -226,9 +273,10 @@ export const addToCart = async (req, res, next) => {
         }
 
         const subtotal = cartItems.reduce((sum, item) => sum + (parseFloat(item.unitPrice) * item.quantity), 0);
-        const discount = subtotal >= 1000 ? subtotal * 0.1 : 0;
-        const shipping = 10.00;
-        const grandTotal = subtotal - discount + shipping;
+        const discount = 0; // No coupon system
+        const shipping = 0; // No shipping method at this stage
+        const tax = 0; // No tax info at this stage
+        const grandTotal = subtotal - discount + shipping + tax;
 
         return ApiResponse.success(res, 'Item added to cart', {
             cartItems: cartItems.map(item => ({
@@ -247,7 +295,9 @@ export const addToCart = async (req, res, next) => {
                 subtotal: parseFloat(subtotal.toFixed(2)),
                 discount: parseFloat(discount.toFixed(2)),
                 shipping: parseFloat(shipping.toFixed(2)),
-                grandTotal: parseFloat(grandTotal.toFixed(2))
+                tax: parseFloat(tax.toFixed(2)),
+                grandTotal: parseFloat(grandTotal.toFixed(2)),
+                itemCount: cartItems.length
             }
         });
     } catch (error) {
@@ -305,6 +355,7 @@ export const removeFromCart = async (req, res, next) => {
     }
 };
 // UPDATED CHECKOUT FUNCTION WITH PAYPAL PAYMENT INTEGRATION
+
 export const checkout = async (req, res, next) => {
     const {
         firstName,
@@ -315,8 +366,9 @@ export const checkout = async (req, res, next) => {
         city,
         postCode,
         country,
-        paymentMethod: rawPaymentMethod, // Destructure paymentMethod
-        shippingMethod = SHIPPING_METHODS.STANDARD // Default shipping method
+        paymentMethod: rawPaymentMethod,
+        shippingMethod, // Optional, defaults to 0 cost if not provided
+        taxRate // Optional, defaults to 0 if not provided
     } = req.body;
 
     const t = await sequelize.transaction();
@@ -324,19 +376,27 @@ export const checkout = async (req, res, next) => {
         let cart;
         let userEmail;
 
+        // Debug: Log the user and session information
+        console.log('Checkout - req.user:', req.user);
+        console.log('Checkout - req.session:', req.session);
+
         // Validate paymentMethod
         const validPaymentMethods = Object.values(PAYMENT_METHODS);
-        const paymentMethod = validPaymentMethods.includes(rawPaymentMethod)
-            ? rawPaymentMethod
-            : (PAYMENT_METHODS.PAYPAL || 'paypal'); // Fallback to 'paypal' if undefined
+        const paymentMethod = validPaymentMethods.find(method => method.toLowerCase() === rawPaymentMethod.toLowerCase())
+            ? rawPaymentMethod.toLowerCase()
+            : (PAYMENT_METHODS.PAYPAL || 'paypal');
 
-        if (!validPaymentMethods.includes(rawPaymentMethod)) {
+        if (!validPaymentMethods.includes(rawPaymentMethod.toLowerCase())) {
             console.warn(`Invalid payment method "${rawPaymentMethod}" provided. Defaulting to "${PAYMENT_METHODS.PAYPAL || 'paypal'}".`);
         }
 
         // Check if the user is authenticated or a guest
-        if (req.user) {
-            cart = await Cart.findOne({ where: { userId: req.user.id, status: CART_STATUS.ACTIVE }, transaction: t });
+        if (req.user && req.user.id) {
+            console.log('Checkout - Authenticated user detected:', req.user.id);
+            cart = await Cart.findOne({
+                where: { userId: req.user.id, status: CART_STATUS.ACTIVE },
+                transaction: t
+            });
             if (!cart) {
                 cart = await Cart.create({
                     userId: req.user.id,
@@ -347,8 +407,13 @@ export const checkout = async (req, res, next) => {
             const user = await User.findByPk(req.user.id, { attributes: ['email'], transaction: t });
             userEmail = user.email;
         } else {
+            console.log('Checkout - Guest checkout detected');
             const sessionId = req.session?.id || 'guest-session';
-            cart = await Cart.findOne({ where: { sessionId, status: CART_STATUS.ACTIVE }, transaction: t });
+            console.log('Checkout - Session ID:', sessionId);
+            cart = await Cart.findOne({
+                where: { sessionId, status: CART_STATUS.ACTIVE },
+                transaction: t
+            });
             if (!cart) {
                 cart = await Cart.create({
                     sessionId,
@@ -364,8 +429,12 @@ export const checkout = async (req, res, next) => {
 
         if (!cart) throw new Error(ERROR_MESSAGES.CART_NOT_FOUND);
 
+        console.log('Checkout - Cart found:', cart.id);
+
         const items = await CartItem.findAll({ where: { cartId: cart.id }, transaction: t });
         if (!items.length) throw new Error(ERROR_MESSAGES.CART_EMPTY);
+
+        console.log('Checkout - Cart items:', items.length);
 
         const productIds = items.map(item => item.productId);
         const variantIds = items.map(item => item.variantId).filter(Boolean);
@@ -384,11 +453,10 @@ export const checkout = async (req, res, next) => {
             const variant = item.variantId ? variantMap.get(item.variantId) : null;
             if (!product || product.stockQuantity < item.quantity) throw new Error(ERROR_MESSAGES.PRODUCT_INSUFFICIENT_STOCK);
 
-            // Log the price values for debugging
             console.log(`Product ID: ${item.productId}, Product Price: ${product.price}, Variant Price: ${variant?.price}`);
 
             const unitPriceRaw = variant ? variant.price || product.price : product.price;
-            const unitPrice = parseFloat(unitPriceRaw) || 0; // Convert to number, default to 0 if invalid
+            const unitPrice = parseFloat(unitPriceRaw) || 0;
 
             if (isNaN(unitPrice)) {
                 console.error(`Invalid unitPrice for product ID ${item.productId}: ${unitPriceRaw}`);
@@ -404,15 +472,23 @@ export const checkout = async (req, res, next) => {
             });
         }
 
-        const tax = 0.0;
-        const deliveryFee = 10.0; // Hardcoded for now, as per Figma (£10.00)
-        const discount = subtotal >= 1000 ? subtotal * 0.1 : 0; // 10% discount for orders over $1000
-        const totalAmount = subtotal + tax + deliveryFee - discount;
+        // Calculate delivery fee based on shippingMethod
+        const deliveryFee = shippingMethod && SHIPPING_FEES[shippingMethod] !== undefined
+            ? parseFloat(SHIPPING_FEES[shippingMethod])
+            : 0.0;
+
+        // No coupon system, so discount is always 0
+        const discount = 0.0;
+
+        // Calculate tax based on taxRate
+        const tax = taxRate && taxRate > 0 ? subtotal * (taxRate / 100) : 0.0;
+
+        const totalAmount = subtotal - discount + deliveryFee + tax;
         const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
         // Create the order in the database
         const order = await Order.create({
-            userId: req.user?.id || null, // Null for guests
+            userId: req.user?.id || null,
             orderNumber,
             status: ORDER_STATUS.PENDING,
             totalAmount,
@@ -427,9 +503,9 @@ export const checkout = async (req, res, next) => {
             postCode,
             country,
             phone,
-            paymentMethod, // Use the validated paymentMethod
+            paymentMethod,
             paymentStatus: PAYMENT_STATUS.PENDING,
-            shippingMethod,
+            shippingMethod: shippingMethod || null,
             email: userEmail,
             processedAt: new Date()
         }, { transaction: t });
@@ -460,7 +536,7 @@ export const checkout = async (req, res, next) => {
 
         await Promise.all(items.map(({ productId, variantId, quantity }) =>
             (variantId ? ProductVariant : Product).update(
-                { stockQuantity: sequelize.literal(`"stockQuantity" - ${quantity}`) }, // Use quoted column name
+                { stockQuantity: sequelize.literal(`"stockQuantity" - ${quantity}`) },
                 { where: { id: variantId || productId }, transaction: t }
             )
         ));
@@ -474,12 +550,10 @@ export const checkout = async (req, res, next) => {
         let paypalOrderData = null;
         if (paymentMethod === PAYMENT_METHODS.PAYPAL) {
             try {
-                // Fetch order with items for PayPal
                 const orderWithItems = await Order.findByPk(order.id, {
                     include: [{ model: OrderItem, as: 'items' }]
                 });
 
-                // Format order data for PayPal
                 const paypalOrderInfo = {
                     id: orderWithItems.id,
                     orderNumber: orderWithItems.orderNumber,
@@ -501,41 +575,44 @@ export const checkout = async (req, res, next) => {
                     }))
                 };
 
-                // Create PayPal order
                 const paypalService = await import('../services/paypalService.js');
                 paypalOrderData = await paypalService.createPayPalOrder(paypalOrderInfo);
 
-                // Update order with PayPal order ID
                 await Order.update(
                     { paypalOrderId: paypalOrderData.id },
                     { where: { id: order.id } }
                 );
             } catch (paypalError) {
                 console.error('PayPal order creation error:', paypalError);
-                // Don't fail the checkout process if PayPal integration fails
-                // Just log the error and continue
             }
         } else {
-            // For non-PayPal payments, send the order confirmation immediately
             try {
-                // Fetch order with items for email
                 const orderWithItems = await Order.findByPk(order.id, {
                     include: [{ model: OrderItem, as: 'items' }]
                 });
 
-                // Send confirmation email
                 await sendOrderConfirmationEmail(userEmail, orderWithItems, orderWithItems.items);
             } catch (emailError) {
                 console.error('Error sending order confirmation email:', emailError);
-                // Don't fail the checkout process if email sending fails
             }
         }
+
+        // Prepare the financial summary for the response
+        const financialSummary = {
+            subtotal: parseFloat(subtotal.toFixed(2)),
+            discount: parseFloat(discount.toFixed(2)),
+            deliveryFee: parseFloat(deliveryFee.toFixed(2)),
+            tax: parseFloat(tax.toFixed(2)),
+            totalAmount: parseFloat(totalAmount.toFixed(2)),
+            itemCount: items.length
+        };
 
         // Return response based on payment method
         if (paymentMethod === PAYMENT_METHODS.PAYPAL && paypalOrderData) {
             return ApiResponse.success(res, 'Checkout successful - Redirecting to PayPal', {
                 orderId: order.id,
                 orderNumber: order.orderNumber,
+                summary: financialSummary,
                 paypal: {
                     orderId: paypalOrderData.id,
                     approvalUrl: paypalOrderData.links.find(link => link.rel === 'approve').href
@@ -544,7 +621,8 @@ export const checkout = async (req, res, next) => {
         } else {
             return ApiResponse.success(res, 'Checkout successful', {
                 orderId: order.id,
-                orderNumber: order.orderNumber
+                orderNumber: order.orderNumber,
+                summary: financialSummary
             }, HTTP_STATUS_CODES.CREATED);
         }
     } catch (error) {

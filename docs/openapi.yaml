@@ -1,13 +1,16 @@
 openapi: 3.0.3
 info:
   title: Omorix API
-  description: API for the Omorix e-commerce platform
+  description: API for the Omorix e-commerce platform, supporting both authenticated and guest users for cart and checkout operations.
   version: 1.0.0
   contact:
     email: support@omorix.com
 servers:
   - url: https://omorix-backend-2.onrender.com/api
     description: Production Server
+  - url: http://localhost:3000/api
+    description: Development Server
+
 components:
   securitySchemes:
     bearerAuth:
@@ -358,6 +361,127 @@ components:
           type: string
           format: date-time
           nullable: true
+    ProductCreateSchema:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        price:
+          type: number
+          format: float
+        discountPercentage:
+          type: integer
+          nullable: true
+        stockQuantity:
+          type: integer
+          description: Always 0, stock managed by ProductVariant
+        sku:
+          type: string
+        isActive:
+          type: boolean
+          default: true
+        categoryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        images:
+          type: array
+          items:
+            type: string
+            format: binary
+        variants:
+          type: array
+          items:
+            type: object
+            properties:
+              size:
+                type: string
+                nullable: true
+              color:
+                type: string
+                nullable: true
+              material:
+                type: string
+                nullable: true
+              price:
+                type: number
+                format: float
+              stockQuantity:
+                type: integer
+              sku:
+                type: string
+            required:
+              - stockQuantity
+      required:
+        - name
+        - slug
+        - price
+        - sku
+        - categoryIds
+        - variants
+    ProductUpdateSchema:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        price:
+          type: number
+          format: float
+        discountPercentage:
+          type: integer
+          nullable: true
+        stockQuantity:
+          type: integer
+          description: Always 0, stock managed by ProductVariant
+        sku:
+          type: string
+        isActive:
+          type: boolean
+        categoryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        images:
+          type: array
+          items:
+            type: string
+            format: binary
+        variants:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              size:
+                type: string
+                nullable: true
+              color:
+                type: string
+                nullable: true
+              material:
+                type: string
+                nullable: true
+              price:
+                type: number
+                format: float
+              stockQuantity:
+                type: integer
+              sku:
+                type: string
     OrderItem:
       type: object
       properties:
@@ -381,6 +505,28 @@ components:
         subtotal:
           type: number
           format: float
+        productSnapshot:
+          type: object
+          properties:
+            name:
+              type: string
+            price:
+              type: number
+              format: float
+            image:
+              type: string
+              format: uri
+              nullable: true
+            variant:
+              type: object
+              nullable: true
+              properties:
+                size:
+                  type: string
+                  nullable: true
+                color:
+                  type: string
+                  nullable: true
         createdAt:
           type: string
           format: date-time
@@ -402,7 +548,7 @@ components:
           type: string
         status:
           type: string
-          enum: [pending, shipped, delivered, canceled]
+          enum: [pending, processing, shipped, delivered, canceled]
         totalAmount:
           type: number
           format: float
@@ -412,42 +558,41 @@ components:
         tax:
           type: number
           format: float
-        shippingCost:
+        deliveryFee:
           type: number
           format: float
-        shippingFirstName:
+        discount:
+          type: number
+          format: float
+        firstName:
+          type: string
+        lastName:
+          type: string
+        deliveryAddress:
+          type: string
+        city:
+          type: string
+        postCode:
           type: string
           nullable: true
-        shippingLastName:
+        country:
           type: string
-          nullable: true
-        shippingAddress:
+        phone:
           type: string
-        shippingCity:
-          type: string
-          nullable: true
-        shippingState:
-          type: string
-          nullable: true
-        shippingZip:
-          type: string
-          nullable: true
-        shippingCountry:
-          type: string
-          nullable: true
-        shippingPhone:
-          type: string
-          nullable: true
         shippingMethod:
           type: string
           enum: [standard, express, free_shipping]
+          nullable: true
         paymentMethod:
           type: string
-          enum: [paystack, credit_card, cash_on_delivery, paypal]
+          enum: [paypal, credit_card, cash_on_delivery]
         paymentStatus:
           type: string
           enum: [pending, completed, failed]
           default: pending
+        paypalOrderId:
+          type: string
+          nullable: true
         email:
           type: string
           format: email
@@ -551,43 +696,43 @@ components:
     CheckoutSchema:
       type: object
       properties:
-        shippingFirstName:
+        firstName:
           type: string
-          nullable: true
-        shippingLastName:
+        lastName:
           type: string
-          nullable: true
-        shippingAddress:
+        phone:
           type: string
-          description: The shipping address
-        shippingCity:
-          type: string
-          nullable: true
-        shippingState:
-          type: string
-          nullable: true
-        shippingZip:
-          type: string
-          nullable: true
-        shippingCountry:
-          type: string
-          nullable: true
-        shippingPhone:
-          type: string
-          nullable: true
-        shippingMethod:
-          type: string
-          enum: [standard, express, free_shipping]
-        paymentMethod:
-          type: string
-          enum: [paystack, credit_card, cash_on_delivery, paypal]
         email:
           type: string
           format: email
           description: Required for guest checkout; optional for authenticated users
+        deliveryAddress:
+          type: string
+        city:
+          type: string
+        postCode:
+          type: string
+          nullable: true
+        country:
+          type: string
+        paymentMethod:
+          type: string
+          enum: [paypal, credit_card, cash_on_delivery]
+        shippingMethod:
+          type: string
+          enum: [standard, express, free_shipping]
+          nullable: true
+        taxRate:
+          type: number
+          format: float
+          nullable: true
       required:
-        - shippingAddress
-        - shippingMethod
+        - firstName
+        - lastName
+        - phone
+        - deliveryAddress
+        - city
+        - country
         - paymentMethod
     ApiResponse:
       type: object
@@ -629,13 +774,41 @@ components:
     PayPalOrderCreateResponse:
       type: object
       properties:
-        paypalOrderId:
+        orderId:
           type: string
-          description: The PayPal order ID
-        approvalUrl:
+          format: uuid
+        orderNumber:
           type: string
-          format: uri
-          description: The URL to redirect the user to for PayPal payment approval
+        paypal:
+          type: object
+          properties:
+            orderId:
+              type: string
+              description: The PayPal order ID
+            approvalUrl:
+              type: string
+              format: uri
+              description: The URL to redirect the user to for PayPal payment approval
+        summary:
+          type: object
+          properties:
+            subtotal:
+              type: number
+              format: float
+            discount:
+              type: number
+              format: float
+            deliveryFee:
+              type: number
+              format: float
+            tax:
+              type: number
+              format: float
+            totalAmount:
+              type: number
+              format: float
+            itemCount:
+              type: integer
     PayPalCaptureResponse:
       type: object
       properties:
@@ -652,7 +825,7 @@ components:
           description: The updated order status
         paymentStatus:
           type: string
-          enum: [pending, paid, failed, refunded]
+          enum: [pending, completed, failed]
           description: The payment status
         captureId:
           type: string
@@ -673,7 +846,7 @@ components:
           description: The order status
         paymentStatus:
           type: string
-          enum: [pending, paid, failed, refunded]
+          enum: [pending, completed, failed]
           description: The payment status
         paypalDetails:
           type: object
@@ -749,39 +922,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /auth/login:
-    post:
-      summary: Login a user
-      tags:
-        - Authentication
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-              required:
-                - email
-                - password
-      responses:
-        '200':
-          description: Login successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-        '401':
-          description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /auth/verify-otp:
     post:
       summary: Verify user OTP
@@ -811,6 +951,70 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
         '400':
           description: Invalid OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/login:
+    post:
+      summary: Login a user
+      description: Logs in a user and returns a JWT token. If the user has a guest cart (identified by session ID), it will be merged with the authenticated user's cart.
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          token:
+                            type: string
+                          user:
+                            $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/logout:
+    post:
+      summary: Logout a user
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized - User must be authenticated
           content:
             application/json:
               schema:
@@ -882,7 +1086,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
   /auth/change-password:
-    post:
+    patch:
       summary: Change user password
       tags:
         - Authentication
@@ -915,6 +1119,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - User must be authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /addresses:
     post:
       summary: Create a new address
@@ -935,7 +1145,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Address'
         '400':
           description: Validation error
           content:
@@ -961,7 +1176,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Address'
         '401':
           description: Unauthorized - User must be authenticated
           content:
@@ -995,7 +1217,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Address'
         '400':
           description: Validation error
           content:
@@ -1068,7 +1295,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Address'
         '401':
           description: Unauthorized - User must be authenticated
           content:
@@ -1086,6 +1318,7 @@ paths:
       summary: Create a main category
       tags:
         - Admin
+        - Categories
       security:
         - bearerAuth: []
       requestBody:
@@ -1100,15 +1333,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
-        '403':
-          description: Forbidden
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Category'
+        '400':
+          description: Validation error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '400':
-          description: Validation error
+        '403':
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -1118,6 +1356,7 @@ paths:
       summary: Create a subcategory
       tags:
         - Admin
+        - Categories
       security:
         - bearerAuth: []
       parameters:
@@ -1139,15 +1378,26 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
-        '403':
-          description: Forbidden
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Category'
+        '400':
+          description: Validation error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '400':
-          description: Validation error
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Parent category not found
           content:
             application/json:
               schema:
@@ -1157,6 +1407,7 @@ paths:
       summary: Create a sub-subcategory
       tags:
         - Admin
+        - Categories
       security:
         - bearerAuth: []
       parameters:
@@ -1178,15 +1429,26 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
-        '403':
-          description: Forbidden
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Category'
+        '400':
+          description: Validation error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '400':
-          description: Validation error
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Parent subcategory not found
           content:
             application/json:
               schema:
@@ -1203,7 +1465,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Category'
   /categories/{id}:
     get:
       summary: Get category details
@@ -1223,7 +1492,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Category'
         '404':
           description: Category not found
           content:
@@ -1235,6 +1509,7 @@ paths:
       summary: Update a category
       tags:
         - Admin
+        - Categories
       security:
         - bearerAuth: []
       parameters:
@@ -1256,9 +1531,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Category'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -1269,16 +1555,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     delete:
       summary: Delete a category
       tags:
         - Admin
+        - Categories
       security:
         - bearerAuth: []
       parameters:
@@ -1296,7 +1577,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -1312,6 +1593,7 @@ paths:
       summary: Create a product
       tags:
         - Admin
+        - Products
       security:
         - bearerAuth: []
       requestBody:
@@ -1319,80 +1601,19 @@ paths:
         content:
           multipart/form-data:
             schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                description:
-                  type: string
-                price:
-                  type: number
-                  format: float
-                discountPercentage:
-                  type: integer
-                stockQuantity:
-                  type: integer
-                  description: Always 0, stock managed by ProductVariant
-                sku:
-                  type: string
-                slug:
-                  type: string
-                  description: unique slug for SEO
-                isActive:
-                  type: string
-                  enum:
-                    - active
-                    - inactive
-                    - archived
-                    - restored
-                    - draft
-                  default: active
-                categoryIds:
-                  type: array
-                  items:
-                    type: string
-                    format: uuid
-                images:
-                  type: array
-                  items:
-                    type: string
-                    format: binary
-                variants:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      size:
-                        type: string
-                        nullable: true
-                      color:
-                        type: string
-                        nullable: true
-                      material:
-                        type: string
-                        nullable: true
-                      price:
-                        type: number
-                        format: float
-                      stockQuantity:
-                        type: integer
-                      sku:
-                        type: string
-                    required:
-                      - stockQuantity
-              required:
-                - name
-                - price
-                - sku
-                - categoryIds
-                - variants
+              $ref: '#/components/schemas/ProductCreateSchema'
       responses:
         '201':
           description: Product created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Product'
         '400':
           description: Validation error
           content:
@@ -1400,7 +1621,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -1410,6 +1631,7 @@ paths:
       summary: Update a product
       tags:
         - Admin
+        - Products
       security:
         - bearerAuth: []
       parameters:
@@ -1424,73 +1646,19 @@ paths:
         content:
           multipart/form-data:
             schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                slug:
-                  type: string
-                description:
-                  type: string
-                price:
-                  type: number
-                  format: float
-                discountPercentage:
-                  type: integer
-                stockQuantity:
-                  type: integer
-                sku:
-                  type: string
-                isActive:
-                  type: string
-                  enum:
-                    - active
-                    - inactive
-                    - archived
-                    - restored
-                    - draft
-                  default: active
-                categoryIds:
-                  type: array
-                  items:
-                    type: string
-                    format: uuid
-                images:
-                  type: array
-                  items:
-                    type: string
-                    format: binary
-                variants:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                      size:
-                        type: string
-                        nullable: true
-                      color:
-                        type: string
-                        nullable: true
-                      material:
-                        type: string
-                        nullable: true
-                      price:
-                        type: number
-                        format: float
-                      stockQuantity:
-                        type: integer
-                      sku:
-                        type: string
+              $ref: '#/components/schemas/ProductUpdateSchema'
       responses:
         '200':
           description: Product updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Product'
         '400':
           description: Validation error
           content:
@@ -1498,7 +1666,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -1513,6 +1681,7 @@ paths:
       summary: Delete a product
       tags:
         - Admin
+        - Products
       security:
         - bearerAuth: []
       parameters:
@@ -1530,7 +1699,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -1546,17 +1715,12 @@ paths:
       summary: Update product variant stock
       tags:
         - Admin
+        - Products
       security:
         - bearerAuth: []
       parameters:
         - name: id
           in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: variantId
-          in: query
           required: true
           schema:
             type: string
@@ -1570,6 +1734,11 @@ paths:
               properties:
                 stockQuantity:
                   type: integer
+                  minimum: 0
+                variantId:
+                  type: string
+                  format: uuid
+                  description: The ID of the variant to update (optional if updating the product's base stock)
               required:
                 - stockQuantity
       responses:
@@ -1578,7 +1747,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Product'
         '400':
           description: Validation error
           content:
@@ -1586,7 +1760,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -1602,6 +1776,7 @@ paths:
       summary: Archive a product
       tags:
         - Admin
+        - Products
       security:
         - bearerAuth: []
       parameters:
@@ -1617,9 +1792,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Product'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -1635,6 +1815,7 @@ paths:
       summary: Restore a product
       tags:
         - Admin
+        - Products
       security:
         - bearerAuth: []
       parameters:
@@ -1650,9 +1831,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Product'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -1698,7 +1884,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ProductImage'
         '400':
           description: Validation error
           content:
@@ -1706,7 +1899,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -1740,7 +1933,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -1777,7 +1970,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ProductImage'
         '400':
           description: Validation error
           content:
@@ -1785,7 +1983,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -1813,7 +2011,7 @@ paths:
           schema:
             type: integer
             default: 0
-        - name: categoryId
+        - name: categoriesId
           in: query
           schema:
             type: string
@@ -1845,7 +2043,26 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          products:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Product'
+                          pagination:
+                            type: object
+                            properties:
+                              limit:
+                                type: integer
+                              offset:
+                                type: integer
+                              total:
+                                type: integer
         '404':
           description: Products not found
           content:
@@ -1871,7 +2088,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Product'
         '404':
           description: Product not found
           content:
@@ -1918,7 +2140,26 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          products:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Product'
+                          pagination:
+                            type: object
+                            properties:
+                              limit:
+                                type: integer
+                              offset:
+                                type: integer
+                              total:
+                                type: integer
         '404':
           description: Products or category not found
           content:
@@ -1943,6 +2184,14 @@ paths:
           description: Image retrieved successfully
           content:
             image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/gif:
               schema:
                 type: string
                 format: binary
@@ -1975,7 +2224,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [pending, shipped, delivered, canceled]
+            enum: [pending, processing, shipped, delivered, canceled]
         - name: sortBy
           in: query
           schema:
@@ -1993,7 +2242,26 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          orders:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Order'
+                          pagination:
+                            type: object
+                            properties:
+                              limit:
+                                type: integer
+                              offset:
+                                type: integer
+                              total:
+                                type: integer
         '401':
           description: Unauthorized - User must be authenticated
           content:
@@ -2002,6 +2270,185 @@ paths:
                 $ref: '#/components/schemas/Error'
         '404':
           description: No orders found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Place an order
+      description: Places an order for the authenticated user using a saved address.
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                addressId:
+                  type: string
+                  format: uuid
+                paymentMethod:
+                  type: string
+                  enum: [paypal, credit_card, cash_on_delivery]
+                shippingMethod:
+                  type: string
+                  enum: [standard, express, free_shipping]
+                taxRate:
+                  type: number
+                  format: float
+                  nullable: true
+              required:
+                - addressId
+                - paymentMethod
+                - shippingMethod
+      responses:
+        '201':
+          description: Order placed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Order'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - User must be authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/{orderId}:
+    get:
+      summary: Get order details
+      description: Retrieves the details of a specific order for the authenticated user.
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order details retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized - User must be authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/status/{orderId}:
+    get:
+      summary: Get order status
+      description: Retrieves the status of a specific order. Accessible to both authenticated and guest users who have the order ID.
+      tags:
+        - Orders
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order status retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            enum: [pending, processing, shipped, delivered, canceled]
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/cancel/{orderId}:
+    post:
+      summary: Cancel an order
+      description: Cancels a specific order for the authenticated user.
+      tags:
+        - Orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cancelReason:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: Order canceled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: Unauthorized - User must be authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Order cannot be canceled (e.g., already shipped or delivered)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Order not found
           content:
             application/json:
               schema:
@@ -2028,7 +2475,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     post:
       summary: Add item to cart
-      description: Adds an item to the cart. Accessible to both authenticated users and guest users (using session ID).
+      description: Adds an item to the cart. Accessible to both authenticated users (using `userId`) and guest users (using `sessionId`). Guest users must ensure the session cookie is sent with the request to maintain cart continuity.
       tags:
         - Orders
       requestBody:
@@ -2043,9 +2490,39 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          cartItems:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/CartItem'
+                          summary:
+                            type: object
+                            properties:
+                              subtotal:
+                                type: number
+                                format: float
+                              discount:
+                                type: number
+                                format: float
+                              shipping:
+                                type: number
+                                format: float
+                              tax:
+                                type: number
+                                format: float
+                              grandTotal:
+                                type: number
+                                format: float
+                              itemCount:
+                                type: integer
         '400':
-          description: Validation error
+          description: Validation error (e.g., invalid product ID, insufficient stock)
           content:
             application/json:
               schema:
@@ -2100,10 +2577,68 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /orders/cart/{cartId}:
+    get:
+      summary: Get cart details by ID
+      description: Retrieves the details of a specific cart by its ID. Accessible to both authenticated users (using `userId`) and guest users (using `sessionId`). Guest users must ensure the session cookie is sent with the request to maintain cart continuity.
+      tags:
+        - Orders
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cart retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          cart:
+                            $ref: '#/components/schemas/Cart'
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/CartItem'
+                          summary:
+                            type: object
+                            properties:
+                              subtotal:
+                                type: number
+                                format: float
+                              discount:
+                                type: number
+                                format: float
+                              shipping:
+                                type: number
+                                format: float
+                              tax:
+                                type: number
+                                format: float
+                              grandTotal:
+                                type: number
+                                format: float
+                              itemCount:
+                                type: integer
+        '404':
+          description: Cart not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /orders/cart/checkout:
     post:
       summary: Checkout cart
-      description: Processes the cart to create an order. Accessible to both authenticated users and guest users (using session ID). Guest users must provide an email.
+      description: Processes the cart to create an order. Accessible to both authenticated users (using `userId`) and guest users (using `sessionId`). Guest users must provide an email and ensure the session cookie is sent with the request to maintain cart continuity.
       tags:
         - Orders
       requestBody:
@@ -2118,104 +2653,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PayPalOrderCreateResponse'
         '400':
           description: Validation error (e.g., missing email for guest checkout, empty cart)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /orders/{orderId}:
-    get:
-      summary: Get order details
-      tags:
-        - Orders
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: orderId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Order details retrieved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-        '404':
-          description: Order not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /orders/status/{orderId}:
-    get:
-      summary: Get order status
-      tags:
-        - Orders
-      parameters:
-        - name: orderId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Order status retrieved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-        '404':
-          description: Order not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /orders/cancel/{orderId}:
-    post:
-      summary: Cancel an order
-      tags:
-        - Orders
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: orderId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                cancelReason:
-                  type: string
-                  nullable: true
-      responses:
-        '200':
-          description: Order canceled successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-        '403':
-          description: Order already shipped or delivered
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Order not found
           content:
             application/json:
               schema:
@@ -2223,6 +2668,7 @@ paths:
   /admin/dashboard:
     get:
       summary: Get admin dashboard statistics
+      description: Retrieves statistics for the admin dashboard, such as total orders, revenue, and customer count.
       tags:
         - Admin
       security:
@@ -2233,9 +2679,26 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          totalOrders:
+                            type: integer
+                          totalRevenue:
+                            type: number
+                            format: float
+                          totalCustomers:
+                            type: integer
+                          recentOrders:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Order'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -2243,6 +2706,7 @@ paths:
   /admin/orders:
     get:
       summary: Get all orders
+      description: Retrieves a paginated list of all orders for admin users.
       tags:
         - Admin
         - Orders
@@ -2263,7 +2727,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [pending, shipped, delivered, canceled]
+            enum: [pending, processing, shipped, delivered, canceled]
         - name: sortBy
           in: query
           schema:
@@ -2281,9 +2745,28 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          orders:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Order'
+                          pagination:
+                            type: object
+                            properties:
+                              limit:
+                                type: integer
+                              offset:
+                                type: integer
+                              total:
+                                type: integer
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -2291,6 +2774,7 @@ paths:
   /admin/orders/{id}:
     patch:
       summary: Update order status
+      description: Updates the status of a specific order for admin users.
       tags:
         - Admin
         - Orders
@@ -2312,7 +2796,7 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: [pending, shipped, delivered, canceled]
+                  enum: [pending, processing, shipped, delivered, canceled]
               required:
                 - status
       responses:
@@ -2321,7 +2805,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Order'
         '400':
           description: Validation error
           content:
@@ -2329,7 +2818,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -2342,6 +2831,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       summary: Cancel an order
+      description: Cancels a specific order for admin users.
       tags:
         - Admin
         - Orders
@@ -2362,7 +2852,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -2376,8 +2866,10 @@ paths:
   /admin/customers:
     get:
       summary: Get all customers
+      description: Retrieves a paginated list of all customers for admin users.
       tags:
         - Admin
+        - Customers
       security:
         - bearerAuth: []
       parameters:
@@ -2408,9 +2900,28 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          customers:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Customer'
+                          pagination:
+                            type: object
+                            properties:
+                              limit:
+                                type: integer
+                              offset:
+                                type: integer
+                              total:
+                                type: integer
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -2418,8 +2929,10 @@ paths:
   /admin/customers/{id}:
     get:
       summary: Get customer details
+      description: Retrieves the details of a specific customer for admin users.
       tags:
         - Admin
+        - Customers
       security:
         - bearerAuth: []
       parameters:
@@ -2435,7 +2948,18 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Customer'
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: Customer not found
           content:
@@ -2444,8 +2968,10 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       summary: Delete a customer
+      description: Deletes a specific customer for admin users.
       tags:
         - Admin
+        - Customers
       security:
         - bearerAuth: []
       parameters:
@@ -2463,7 +2989,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -2477,8 +3003,10 @@ paths:
   /admin/customers/{id}/ban:
     patch:
       summary: Ban a customer
+      description: Bans or unbans a specific customer for admin users.
       tags:
         - Admin
+        - Customers
       security:
         - bearerAuth: []
       parameters:
@@ -2502,11 +3030,16 @@ paths:
                 - status
       responses:
         '200':
-          description: Customer banned successfully
+          description: Customer status updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Customer'
         '400':
           description: Validation error
           content:
@@ -2514,7 +3047,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Forbidden
+          description: Forbidden - Admin access required
           content:
             application/json:
               schema:
@@ -2528,7 +3061,7 @@ paths:
   /payments/paypal/create/{orderId}:
     post:
       summary: Create a PayPal order for an existing order
-      description: Creates a PayPal order for payment processing and returns the approval URL to redirect the user to PayPal.
+      description: Creates a PayPal order for payment processing and returns the approval URL to redirect the user to PayPal. Accessible to both authenticated and guest users who have the order ID.
       tags:
         - Payments
       parameters:

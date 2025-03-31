@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import bodyParser from 'body-parser'
 import helmet from 'helmet'
+import session from 'express-session'
 import authRoute from './routes/authRoutes.js'
 import orderRoute from './routes/orderRoutes.js'
 import adminRoute from './routes/adminRoutes.js'
@@ -28,6 +29,13 @@ app.use(
     allowedHeaders: 'Content-Type, Authorization'
   })
 )
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'secret',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: true }
+}));
 
 app.get('/', (req, res) => {
   res.send(`Welcome to the Omorix API`)
