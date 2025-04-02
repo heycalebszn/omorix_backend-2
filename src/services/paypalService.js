@@ -100,8 +100,8 @@ export async function createPayPalOrder(orderData) {
                 landing_page: 'BILLING',
                 shipping_preference: 'SET_PROVIDED_ADDRESS',
                 user_action: 'PAY_NOW',
-                return_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/checkout/success`,
-                cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/checkout/cancel`
+                return_url: `${process.env.FRONTEND_URL || 'http://localhost:5174'}/checkout/success`,
+                cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5174'}/checkout/cancel`
             }
         };
 
