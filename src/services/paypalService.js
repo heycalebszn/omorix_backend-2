@@ -90,7 +90,7 @@ export async function createPayPalOrder(orderData) {
                             address_line_1: orderData.deliveryAddress,
                             admin_area_2: orderData.city,
                             postal_code: orderData.postCode,
-                            country_code: 'US' // Default to US for sandbox
+                            country_code: 'US'
                         }
                     }
                 }
@@ -100,7 +100,7 @@ export async function createPayPalOrder(orderData) {
                 landing_page: 'BILLING',
                 shipping_preference: 'SET_PROVIDED_ADDRESS',
                 user_action: 'PAY_NOW',
-                return_url: `${process.env.FRONTEND_URL || 'http://localhost:5174'}/checkout/success`,
+                return_url: `${process.env.FRONTEND_URL || 'http://localhost:5174'}/order-completed`,
                 cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5174'}/checkout/cancel`
             }
         };
